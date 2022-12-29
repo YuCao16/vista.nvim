@@ -156,10 +156,8 @@ end
 
 function M.switch_provider(provider)
     if provider == "lsp" then
-        -- vim.notify("switch to lsp")
         config.section = "symbols"
     elseif provider == "ctags" then
-        -- vim.notify("switch to ctags")
         config.section = "ctags"
     end
     lib.update()

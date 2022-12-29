@@ -13,8 +13,7 @@ local first_init_done = false
 local M = {}
 
 M.State = { section_line_indexes = {} }
-
-M.timer = nil
+M.setup_update_autocmd = false
 
 local function _redraw()
     if vim.v.exiting ~= vim.NIL then
@@ -36,9 +35,27 @@ function M.update()
 
     updater.draw()
     _redraw()
+    -- vim.notify("updated")
 end
 
 function M.open(opts)
+    if not M.setup_update_autocmd then
+        vim.api.nvim_exec(
+            [[
+            echo 1
+augroup SidebarNvimUpdate
+    au!
+    au BufWritePost * lua require'vista-nvim.lib'.update()
+    au BufEnter * lua require'vista-nvim.lib'.update()
+    au TabEnter * lua require'vista-nvim.lib'.update()
+    au VimResume * lua require'vista-nvim.lib'.update()
+    au FocusGained * lua require'vista-nvim.lib'.update()
+    augroup END
+    ]],
+            false
+        )
+        M.setup_update_autocmd = true
+    end
     view.open(opts or { focus = false })
     M.update()
 end

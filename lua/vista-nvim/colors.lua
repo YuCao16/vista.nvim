@@ -3,12 +3,14 @@ local api = vim.api
 local M = {}
 
 local function get_hl_groups()
-    return {}
+    return {
+        -- VistaNvimSectionTitle = {fg="#4f06ed",gui="bold"}
+        VistaNvimSectionTitle = {fg="#4fa6ed",gui="bold"}
+    }
 end
 
 local function get_links()
     return {
-        VistaNvimSectionTitle = "Directory",
         VistaNvimSectionSeperator = "Comment",
         VistaNvimSectionTitleSeperator = "Comment",
         VistaNvimNormal = "Normal",

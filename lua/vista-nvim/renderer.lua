@@ -6,7 +6,7 @@ local ctags = require("vista-nvim.types.uctags")
 
 local api = vim.api
 
-local namespace_id = api.nvim_create_namespace("SidebarNvimHighlights")
+local namespace_id = api.nvim_create_namespace("VistaNvimHighlights")
 
 local M = {}
 
@@ -128,7 +128,7 @@ local function get_lines_and_hl(sections_data)
 
         table.insert(
             hl,
-            { "SidebarNvimSectionTitle", #lines, 0, #section_title }
+            { "VistaNvimSectionTitle", #lines, 0, #section_title }
         )
 
         local section_title_separator =
@@ -144,7 +144,7 @@ local function get_lines_and_hl(sections_data)
         for _, line in ipairs(section_title_separator) do
             table.insert(
                 hl,
-                { "SidebarNvimSectionTitleSeperator", #lines, 0, #line }
+                { "VistaNvimSectionTitleSeperator", #lines, 0, #line }
             )
             table.insert(lines, line)
         end
@@ -176,7 +176,7 @@ local function get_lines_and_hl(sections_data)
             for _, line in ipairs(separator) do
                 table.insert(
                     hl,
-                    { "SidebarNvimSectionSeperator", #lines, 0, #line }
+                    { "VistaNvimSectionSeperator", #lines, 0, #line }
                 )
                 table.insert(lines, line)
             end
