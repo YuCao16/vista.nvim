@@ -30,7 +30,7 @@ end
 
 -- Registers a handler for the Ready event.
 -- @param handler (function) Handler with the signature `function()`
-function M.on_sidebar_nvim_ready(handler)
+function M.on_vista_nvim_ready(handler)
     register_handler(Event.Ready, handler)
 end
 
