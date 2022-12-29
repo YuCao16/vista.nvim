@@ -13,9 +13,11 @@ M.enable_profile = false
 
 M.section_title_separator = { "" }
 
-M.symbols = { icon = "ƒ" }
+M.sections = { "symbols" }
 
-M.tagbar = { icon = "ƒ" }
+M.section = "symbols"
+
+M.symbols = { icon = "ƒ" }
 
 M.datetime = {
     icon = "",

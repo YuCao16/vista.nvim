@@ -1,6 +1,6 @@
-local bindings = require("sidebar-nvim.bindings")
-local config = require("sidebar-nvim.config")
-local utils = require("sidebar-nvim.utils")
+local bindings = require("vista-nvim.bindings")
+local config = require("vista-nvim.config")
+local utils = require("vista-nvim.utils")
 
 local a = vim.api
 
@@ -86,7 +86,7 @@ function M.setup()
     M.View.width = config.initial_width or M.View.width
 
     M.View.bufnr = a.nvim_create_buf(false, false)
-    -- bindings.inject(M.View.bufnr)
+    bindings.inject(M.View.bufnr)
 
     local buffer_name = generate_buffer_name()
 

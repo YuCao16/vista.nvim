@@ -4,9 +4,53 @@ local luv = vim.loop
 
 function M.echo_warning(msg)
     api.nvim_command("echohl WarningMsg")
-    api.nvim_command("echom '[SidebarNvim] " .. msg:gsub("'", "''") .. "'")
+    api.nvim_command("echom '[VistaNvim] " .. msg:gsub("'", "''") .. "'")
     api.nvim_command("echohl None")
 end
+
+function M.escape_keycode(key)
+    return key:gsub("<", "["):gsub(">", "]")
+end
+
+function M.unescape_keycode(key)
+    return key:gsub("%[", "<"):gsub("%]", ">")
+end
+
+function M.vista_nvim_callback(key)
+    return string.format(
+        ":lua require('vista-nvim.lib').on_keypress('%s')<CR>",
+        M.escape_keycode(key)
+    )
+end
+
+function M.vista_nvim_cursor_move_callback(direction)
+    return string.format(
+        ":lua require('vista-nvim')._on_cursor_move('%s')<CR>",
+        direction
+    )
+end
+
+local function get_builtin_section(name)
+    local ret, section = pcall(require, "vista-nvim.builtin." .. name)
+    if not ret then
+        M.echo_warning("error trying to load section: " .. name)
+        return nil
+    end
+
+    return section
+end
+
+function M.resolve_section(index, section)
+    if type(section) == "string" then
+        return get_builtin_section(section)
+    elseif type(section) == "table" then
+        return section
+    end
+
+    M.echo_warning("invalid VistaNvim section at: index=" .. index .. " section=" .. section)
+    return nil
+end
+
 
 -- @param opts table
 -- @param opts.modified boolean filter buffers by modified or not
