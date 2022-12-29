@@ -31,16 +31,16 @@ M.View = {
         { name = "swapfile", val = false },
         { name = "buftype", val = "nofile" },
         { name = "modifiable", val = false },
-        { name = "filetype", val = "SidebarNvim" },
+        { name = "filetype", val = "VistaNvim" },
         { name = "bufhidden", val = "hide" },
     },
 }
 
----Find a rogue SidebarNvim buffer that might have been spawned by i.e. a session.
+---Find a rogue VistaNvim buffer that might have been spawned by i.e. a session.
 ---@return integer|nil
 local function find_rogue_buffer()
     for _, v in ipairs(a.nvim_list_bufs()) do
-        if string.match(vim.fn.bufname(v), "^SidebarNvim_.*") then
+        if string.match(vim.fn.bufname(v), "^VistaNvim_.*") then
             return v
         end
     end
@@ -53,10 +53,11 @@ local function is_buf_valid()
     if M.View.bufnr == nil then
         return false
     end
-    return a.nvim_buf_is_valid(M.View.bufnr) and a.nvim_buf_is_loaded(M.View.bufnr)
+    return a.nvim_buf_is_valid(M.View.bufnr)
+        and a.nvim_buf_is_loaded(M.View.bufnr)
 end
 
----Find pre-existing SidebarNvim buffer, delete its windows then wipe it.
+---Find pre-existing VistaNvim buffer, delete its windows then wipe it.
 ---@private
 function M._wipe_rogue_buffer()
     local bn = find_rogue_buffer()
@@ -76,7 +77,7 @@ function M._wipe_rogue_buffer()
 end
 
 local function generate_buffer_name()
-    return "SidebarNvim_" .. math.random(1000000)
+    return "VistaNvim_" .. math.random(1000000)
 end
 
 -- set user options and create tree buffer (should never be wiped)
@@ -85,7 +86,7 @@ function M.setup()
     M.View.width = config.initial_width or M.View.width
 
     M.View.bufnr = a.nvim_create_buf(false, false)
-    bindings.inject(M.View.bufnr)
+    -- bindings.inject(M.View.bufnr)
 
     local buffer_name = generate_buffer_name()
 
@@ -98,15 +99,12 @@ function M.setup()
         vim.bo[M.View.bufnr][opt.name] = opt.val
     end
 
-    vim.api.nvim_exec(
-        [[
-augroup sidebar_nvim_prevent_buffer_override
-    autocmd!
-    autocmd BufWinEnter * lua require('sidebar-nvim.view')._prevent_buffer_override()
-augroup END
-]],
-        false
+    vim.cmd("augroup VistaNvim")
+    vim.cmd("au!")
+    vim.cmd(
+        "au BufWinEnter,BufWinLeave * lua require'vista-nvim.view'._prevent_buffer_override()"
     )
+    vim.cmd("augroup END")
 end
 
 local goto_tbl = { right = "h", left = "l", top = "j", bottom = "k" }
@@ -133,7 +131,7 @@ function M._prevent_buffer_override()
             winopts_target[key] = a.nvim_win_get_option(0, key)
         end
 
-        -- change the buffer will override the target window with the sidebar window opts
+        -- change the buffer will override the target window with the vista-nvim window opts
         vim.cmd("buffer " .. curbuf)
 
         -- revert the changes made when changing buffer
@@ -147,7 +145,9 @@ end
 
 function M.win_open(opts)
     -- TODO: [deprecated] to remove
-    utils.echo_warning("view.win_open() is now deprecated, please use 'require('sidebar-nvim').is_open()'")
+    utils.echo_warning(
+        "view.win_open() is now deprecated, please use 'require('vista-nvim').is_open()'"
+    )
     return M.is_win_open(opts)
 end
 
@@ -228,7 +228,11 @@ function M.open(options)
     a.nvim_command("vertical resize " .. get_defined_width())
     local winnr = a.nvim_get_current_win()
     local tabpage = a.nvim_get_current_tabpage()
-    M.View.tabpages[tabpage] = vim.tbl_extend("force", M.View.tabpages[tabpage] or {}, { winnr = winnr })
+    M.View.tabpages[tabpage] = vim.tbl_extend(
+        "force",
+        M.View.tabpages[tabpage] or {},
+        { winnr = winnr }
+    )
     vim.cmd("buffer " .. M.View.bufnr)
     for k, v in pairs(M.View.winopts) do
         set_local(k, v)
@@ -256,7 +260,7 @@ function M.close()
     a.nvim_win_hide(M.get_winnr())
 end
 
---- Returns the window number for sidebar-nvim within the tabpage specified
+--- Returns the window number for vista-nvim within the tabpage specified
 ---@param tabpage number: (optional) the number of the chosen tabpage. Defaults to current tabpage.
 ---@return number
 function M.get_winnr(tabpage)
@@ -267,7 +271,7 @@ function M.get_winnr(tabpage)
     end
 end
 
---- Returns the window width for sidebar-nvim within the tabpage specified
+--- Returns the window width for vista-nvim within the tabpage specified
 ---@param tabpage number: (optional) the number of the chosen tabpage. Defaults to current tabpage.
 ---@return number
 function M.get_width(tabpage)
