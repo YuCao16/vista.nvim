@@ -2,12 +2,15 @@ local view = require("vista-nvim.view")
 local config = require("vista-nvim.config")
 local utils = require("vista-nvim.utils")
 local profile = require("vista-nvim.profile")
+local ctags = require("vista-nvim.types.uctags")
 
 local api = vim.api
 
 local namespace_id = api.nvim_create_namespace("SidebarNvimHighlights")
 
 local M = {}
+
+M.previous_filepath = nil
 
 local function sanitize_lines(lines)
     local lines_ = {}
@@ -19,10 +22,19 @@ local function sanitize_lines(lines)
 end
 
 local function get_filepath_shorten()
-    filepath = vim.fn.expand("%:p")
+    if ctags.language_opt[vim.bo.filetype] ~= nil then
+        filepath = vim.fn.expand("%:p")
+        M.previous_filepath = filepath
+    else
+        if M.previous_filepath == nil then
+            return "VistaNvim"
+        else
+            filepath = M.previous_filepath
+        end
+    end
     local file_path_clean = filepath:gsub(vim.fn.expand("~/"), " ~/")
-    if file_path_clean:len() > 25 then
-        file_path_clean = "..." .. file_path_clean:sub(-22,-1)
+    if file_path_clean:len() > view.View.width then
+        file_path_clean = "..." .. file_path_clean:sub(-view.View.width + 8, -1)
     end
     return file_path_clean
 end

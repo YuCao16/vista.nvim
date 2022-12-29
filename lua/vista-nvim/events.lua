@@ -18,7 +18,12 @@ local function dispatch(event_name, payload)
     for _, handler in pairs(get_handlers(event_name)) do
         local success, error = pcall(handler, payload)
         if not success then
-            vim.api.nvim_err_writeln("Handler for event " .. event_name .. " errored. " .. vim.inspect(error))
+            vim.api.nvim_err_writeln(
+                "Handler for event "
+                    .. event_name
+                    .. " errored. "
+                    .. vim.inspect(error)
+            )
         end
     end
 end
@@ -35,4 +40,3 @@ function M.on_vista_nvim_ready(handler)
 end
 
 return M
-

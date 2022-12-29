@@ -9,7 +9,7 @@ return {
         local lines = {}
         local hl = {}
         if lines == nil or #lines == 0 then
-            return { lines = { "symbols" }, hl = {} }
+            return { lines = { "ctags" }, hl = {} }
         else
             return { lines = lines, hl = hl }
         end

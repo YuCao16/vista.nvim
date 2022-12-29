@@ -29,7 +29,6 @@ function M.setup()
 end
 
 function M.update()
-    vim.notify("updating")
     -- this function will update the vista content
     if view.is_win_open({ any_tabpage = true }) then
         updater.update()

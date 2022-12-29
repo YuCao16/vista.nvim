@@ -13,6 +13,12 @@ M.State = {
         ["q"] = function()
             require("vista-nvim").close()
         end,
+        ["t"] = function()
+            require("vista-nvim").switch_provider("ctags")
+        end,
+        ["s"] = function()
+            require("vista-nvim").switch_provider("lsp")
+        end,
     },
 }
 
