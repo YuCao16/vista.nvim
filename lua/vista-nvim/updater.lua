@@ -17,7 +17,7 @@ function M.setup()
 
     local ctx = { width = view.get_width() }
 
-    local section = utils.resolve_section(1,config.section)
+    local section = utils.resolve_section(1, config.section)
     if section then
         local hl_def = section.highlights or {}
 
@@ -70,7 +70,7 @@ function M.draw()
 
         local draw_ctx = { width = view.View.width }
 
-        local section = utils.resolve_section(1,config.section)
+        local section = utils.resolve_section(1, config.section)
         local section_index = 1
 
         if section ~= nil then

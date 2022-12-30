@@ -1,24 +1,8 @@
--- local config = require("vista-nvim.config")
---
--- return {
---     title = "Symbols",
---     icon = config["symbols"].icon,
---     highlights = {},
---     bindings = {},
---     draw = function()
---         local lines = {}
---         local hl = {}
---         if lines == nil or #lines == 0 then
---             return { lines = { "symbols" }, hl = {} }
---         else
---             return { lines = lines, hl = hl }
---         end
---     end,
--- }
-local Loclist = require("sidebar-nvim.components.loclist")
-local config = require("sidebar-nvim.config")
-local view = require("sidebar-nvim.view")
+local Loclist = require("vista-nvim.components.loclist")
+local config = require("vista-nvim.config")
+local view = require("vista-nvim.view")
 
+local M = {}
 local loclist = Loclist:new({ omit_single_group = true })
 local open_symbols = {}
 local last_buffer
@@ -68,8 +52,8 @@ local function build_loclist(filepath, loclist_items, symbols, level)
             group = "symbols",
             left = {
                 { text = string.rep(" ", level) .. kind.text, hl = kind.hl },
-                { text = symbol.name .. " ", hl = "SidebarNvimSymbolsName" },
-                { text = symbol.detail, hl = "SidebarNvimSymbolsDetail" },
+                { text = symbol.name .. " ", hl = "VistaNvimSymbolsName" },
+                { text = symbol.detail, hl = "VistaNvimSymbolsDetail" },
             },
             right = {},
             data = { symbol = symbol, filepath = filepath },
@@ -89,7 +73,7 @@ local function get_symbols(_)
     local current_buf = vim.api.nvim_get_current_buf()
     local current_pos = vim.lsp.util.make_position_params()
 
-    -- if current buffer is sidebar's own buffer, use previous buffer
+    -- if current buffer is vista's own buffer, use previous buffer
     if current_buf ~= view.View.bufnr then
         last_buffer = current_buf
         last_pos = current_pos
@@ -161,41 +145,41 @@ return {
     highlights = {
         groups = {},
         links = {
-            SidebarNvimSymbolsName = "SidebarNvimNormal",
-            SidebarNvimSymbolsDetail = "SidebarNvimLineNr",
+            VistaNvimSymbolsName = "VistaNvimNormal",
+            VistaNvimSymbolsDetail = "VistaNvimLineNr",
         },
     },
     bindings = {
-        -- ["t"] = function(line)
-        --     local location = loclist:get_location_at(line)
-        --     if location == nil then
-        --         return
-        --     end
-        --     local symbol = location.data.symbol
-        --     local key = symbol.name
-        --         .. symbol.range.start.line
-        --         .. symbol.range.start.character
-        --
-        --     if open_symbols[key] == nil then
-        --         open_symbols[key] = true
-        --     else
-        --         open_symbols[key] = nil
-        --     end
-        -- end,
-        -- ["e"] = function(line)
-        --     local location = loclist:get_location_at(line)
-        --     if location == nil then
-        --         return
-        --     end
-        --
-        --     local symbol = location.data.symbol
-        --
-        --     vim.cmd("wincmd p")
-        --     vim.cmd("e " .. location.data.filepath)
-        --     vim.fn.cursor(
-        --         symbol.range.start.line + 1,
-        --         symbol.range.start.character + 1
-        --     )
-        -- end,
+        ["O"] = function(line)
+            local location = loclist:get_location_at(line)
+            if location == nil then
+                return
+            end
+            local symbol = location.data.symbol
+            local key = symbol.name
+                .. symbol.range.start.line
+                .. symbol.range.start.character
+
+            if open_symbols[key] == nil then
+                open_symbols[key] = true
+            else
+                open_symbols[key] = nil
+            end
+        end,
+        ["<CR>"] = function(line)
+            local location = loclist:get_location_at(line)
+            if location == nil then
+                return
+            end
+
+            local symbol = location.data.symbol
+
+            vim.cmd("wincmd p")
+            vim.cmd("e " .. location.data.filepath)
+            vim.fn.cursor(
+                symbol.range.start.line + 1,
+                symbol.range.start.character + 1
+            )
+        end,
     },
 }

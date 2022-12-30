@@ -1,4 +1,4 @@
-local Component = require("sidebar-nvim.components.basic")
+local Component = require("vista-nvim.components.basic")
 
 local Loclist = {}
 
@@ -15,8 +15,8 @@ Loclist.DEFAULT_OPTIONS = {
     groups_initially_closed = false,
     -- highlight groups for each control element
     highlights = {
-        group = "SidebarNvimLabel",
-        group_count = "SidebarNvimSectionTitle",
+        group = "VistaNvimLabel",
+        group_count = "VistaNvimSectionTitle",
     },
 }
 
@@ -212,7 +212,7 @@ function Loclist:draw_group(
                     else
                         table.insert(
                             section_hl,
-                            { "SidebarNvimNormal", #section_lines, #line, -1 }
+                            { "VistaNvimNormal", #section_lines, #line, -1 }
                         )
                     end
                     line = line .. tostring(i.text):sub(1, space_left)
@@ -243,7 +243,7 @@ function Loclist:draw_group(
                         table.insert(
                             temp_hl,
                             {
-                                "SidebarNvimNormal",
+                                "VistaNvimNormal",
                                 #section_lines,
                                 #line + #temp_line,
                                 -1,

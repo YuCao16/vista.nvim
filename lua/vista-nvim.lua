@@ -156,7 +156,7 @@ end
 
 function M.switch_provider(provider)
     if provider == "lsp" then
-        config.section = "symbols"
+        config.section = "lsp"
     elseif provider == "ctags" then
         config.section = "ctags"
     end

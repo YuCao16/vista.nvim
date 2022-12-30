@@ -7,13 +7,14 @@ local bindings = require("vista-nvim.bindings")
 local utils = require("vista-nvim.utils")
 local updater = require("vista-nvim.updater")
 local renderer = require("vista-nvim.renderer")
+local ctags = require("vista-nvim.types.uctags")
 
 local first_init_done = false
 
 local M = {}
 
 M.State = { section_line_indexes = {} }
-M.setup_update_autocmd = false
+M.seted_update_autocmd = false
 
 local function _redraw()
     if vim.v.exiting ~= vim.NIL then
@@ -29,32 +30,38 @@ end
 
 function M.update()
     -- this function will update the vista content
+    if ctags.language_opt[vim.bo.filetype] == nil then
+        return
+    end
     if view.is_win_open({ any_tabpage = true }) then
         updater.update()
     end
 
     updater.draw()
     _redraw()
-    -- vim.notify("updated")
+end
+
+function M.setup_update_autocmd()
+    local vista_update_autocmd =
+        vim.api.nvim_create_augroup("vista_update_autocmd", { clear = true })
+    vim.api.nvim_create_autocmd({
+        "BufEnter",
+        "TabEnter",
+        "BufWritePost",
+        "InsertLeave",
+        "VimResume",
+        "FocusGained",
+    }, {
+        pattern = "*",
+        callback = require'vista-nvim.lib'.update,
+        group = vista_update_autocmd,
+    })
 end
 
 function M.open(opts)
-    if not M.setup_update_autocmd then
-        vim.api.nvim_exec(
-            [[
-            echo 1
-augroup SidebarNvimUpdate
-    au!
-    au BufWritePost * lua require'vista-nvim.lib'.update()
-    au BufEnter * lua require'vista-nvim.lib'.update()
-    au TabEnter * lua require'vista-nvim.lib'.update()
-    au VimResume * lua require'vista-nvim.lib'.update()
-    au FocusGained * lua require'vista-nvim.lib'.update()
-    augroup END
-    ]],
-            false
-        )
-        M.setup_update_autocmd = true
+    if not M.seted_update_autocmd then
+        M.setup_update_autocmd()
+        M.seted_update_autocmd = true
     end
     view.open(opts or { focus = false })
     M.update()
@@ -130,8 +137,53 @@ function M.destroy()
     view._wipe_rogue_buffer()
 end
 
+local function get_start_line(content_only, indexes)
+    if content_only then
+        return indexes.content_start
+    end
+
+    return indexes.section_start
+end
+
+local function get_end_line(content_only, indexes)
+    if content_only then
+        return indexes.content_start + indexes.content_length
+    end
+
+    return indexes.section_start + indexes.section_length - 1
+end
+
+-- @param opts: table
+-- @param opts.content_only: boolean = whether the it should only check if the cursor is hovering the contents of the section
+-- @return table{section_index = number, section_content_current_line = number, cursor_col = number, cursor_line = number)
+function M.find_section_at_cursor(opts, provider)
+    opts = opts or { content_only = true }
+
+    local cursor = opts.cursor or api.nvim_win_get_cursor(0)
+    local cursor_line = cursor[1]
+    local cursor_col = cursor[2]
+    local section_line_index = M.State.section_line_indexes[1]
+
+    local start_line = get_start_line(opts.content_only, section_line_index)
+    local end_line = get_end_line(opts.content_only, section_line_index)
+
+    if provider ~= nil then
+        return {
+            section_index = 1,
+            section_content_current_line = cursor_line
+                - section_line_index.content_start,
+            cursor_line = cursor_line,
+            cursor_col = cursor_col,
+            line_index = section_line_index,
+        }
+    end
+
+    return nil
+end
+
 function M.on_keypress(key)
-    bindings.on_keypress(utils.unescape_keycode(key))
+    local section_match = M.find_section_at_cursor({}, config.section)
+    bindings.on_keypress(utils.unescape_keycode(key), section_match)
     M.update()
 end
 

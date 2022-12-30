@@ -34,7 +34,7 @@ function M.setup()
 
     local section = utils.resolve_section(1, config.section)
     if section and section.bindings ~= nil then
-        M.update_section_bindings(section_index, section.bindings)
+        M.update_section_bindings(1, section.bindings)
     end
 end
 
@@ -85,7 +85,8 @@ local function on_keypress_section(key, section_match, bindings)
         return false
     end
 
-    local binding = bindings[section_match.section_index]
+    -- local binding = bindings[section_match.section_index]
+    local binding = bindings[1]
 
     if binding == nil then
         return false
@@ -104,27 +105,28 @@ local function on_keypress_view(key, binding)
     execute_binding(key, binding)
 end
 
--- function M.on_keypress(key, section_index)
---     local section_bindings = M.State.section_bindings[key]
---
---     if section_bindings ~= nil then
---         if on_keypress_section(key, section_index, section_bindings) then
---             return
---         end
---     end
---
---     local view_bindings = M.State.view_bindings[key]
---
---     if view_bindings ~= nil then
---         on_keypress_view(key, view_bindings)
---     end
--- end
-function M.on_keypress(key)
+function M.on_keypress(key, section_index)
+    local section_bindings = M.State.section_bindings[key]
+
+    if section_bindings ~= nil then
+        if on_keypress_section(key, section_index, section_bindings) then
+            return
+        end
+    end
+
     local view_bindings = M.State.view_bindings[key]
 
     if view_bindings ~= nil then
         on_keypress_view(key, view_bindings)
     end
 end
+
+-- function M.on_keypress(key)
+--     local view_bindings = M.State.view_bindings[key]
+--
+--     if view_bindings ~= nil then
+--         on_keypress_view(key, view_bindings)
+--     end
+-- end
 
 return M
