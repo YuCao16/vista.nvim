@@ -1,15 +1,6 @@
-local view = require("vista-nvim.view")
-local lib = require("vista-nvim.lib")
-local config = require("vista-nvim.config")
-local bindings = require("vista-nvim.bindings")
-local utils = require("vista-nvim.utils")
-local updater = require("vista-nvim.updater")
-local colors = require("vista-nvim.colors")
+local M = { setup_called = false }
 
-local M = { open_on_start = false, setup_called = false }
-
-local deprecated_config_map = { docker = "containers" }
-
+local deprecated_config_map = {}
 local function check_deprecated_field(key)
     if not vim.tbl_contains(vim.tbl_keys(deprecated_config_map), key) then
         return
@@ -29,134 +20,31 @@ function M.setup(opts)
     opts = opts or {}
 
     -- this keys should not be merged by tbl_deep_merge, they should be overriden completely
-    local full_override_keys =
-        { "sections", "section_separator", "section_title_separator" }
+    local full_override_keys = {}
 
     for key, value in pairs(opts) do
         check_deprecated_field(key)
 
-        if key == "open" then
-            M.open_on_start = value
+        if
+            type(value) ~= "table"
+            or vim.tbl_contains(full_override_keys, key)
+        then
+            config[key] = value
         else
-            if
-                type(value) ~= "table"
-                or vim.tbl_contains(full_override_keys, key)
-            then
-                config[key] = value
+            if type(config[key]) == "table" then
+                config[key] = vim.tbl_deep_extend("force", config[key], value)
             else
-                if type(config[key]) == "table" then
-                    config[key] =
-                        vim.tbl_deep_extend("force", config[key], value)
-                else
-                    config[key] = value
-                end
+                config[key] = value
             end
         end
     end
 
     M.setup_called = true
+
+    -- TODO: move to open command to achieve lazy load
     -- check if vim enter has already been called, if so, do initialize
     -- docs for `vim.v.vim_did_enter`: https://neovim.io/doc/user/autocmd.html#VimEnter
     if vim.v.vim_did_enter == 1 then
         M._internal_setup()
     end
 end
-
-function M._internal_setup()
-    colors.setup()
-    bindings.setup()
-    view.setup()
-
-    updater.setup()
-    lib.setup()
-
-    if M.open_on_start then
-        M._internal_open()
-    end
-end
-
-function M._vim_enter()
-    if M.setup_called then
-        M._internal_setup()
-    end
-end
-
--- toggle the vista
--- @param (table) opts (optional)
--- |- boolean opts.focus whether it should focus once open or not
-function M.toggle(opts)
-    lib.toggle(opts)
-end
-
-function M.close()
-    lib.close()
-end
-
-function M._internal_open(opts)
-    if not lib.is_open() then
-        lib.open(opts)
-    end
-end
-
-function M.open()
-    M._internal_open()
-end
-
--- Force immediate update
-function M.update()
-    lib.update()
-end
-
--- Resize the vista to the requested size
--- @param size number
-function M.resize(size)
-    lib.resize(size)
-end
-
---- Returns the window width for vista-nvim within the tabpage specified
----@param tabpage number: (optional) the number of the chosen tabpage. Defaults to current tabpage.
----@return number
-function M.get_width(tabpage)
-    return lib.get_width(tabpage)
-end
-
--- Focus or open the vista
--- @param opts table
--- @param opts.section_index number
--- @param opts.cursor_at_content boolean
-function M.focus(opts)
-    lib.focus(opts)
-end
-
--- @param opts table
--- @param |- opts.any_tabpage boolean if true check if is open in any tabpage, if false check in current tab
-function M.is_open(opts)
-    return lib.is_open(opts)
-end
-
-function M.reset_highlight()
-    if M.setup_called then
-        colors.setup()
-        renderer.render_hl(view.View.bufnr, {})
-    end
-end
-
-function M.print_profile_summary()
-    if not config.enable_profile then
-        utils.echo_warning("Profile not enabled")
-        return
-    end
-
-    profile.print_summary()
-end
-
-function M.switch_provider(provider)
-    if provider == "lsp" then
-        config.section = "lsp"
-    elseif provider == "ctags" then
-        config.section = "ctags"
-    end
-    lib.update()
-end
-
-return M
