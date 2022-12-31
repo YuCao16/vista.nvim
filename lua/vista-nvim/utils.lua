@@ -23,13 +23,6 @@ function M.vista_nvim_callback(key)
     )
 end
 
-function M.vista_nvim_cursor_move_callback(direction)
-    return string.format(
-        ":lua require('vista-nvim')._on_cursor_move('%s')<CR>",
-        direction
-    )
-end
-
 local function get_provider_section(name)
     local ret, section = pcall(require, "vista-nvim.provider." .. name)
     if not ret then

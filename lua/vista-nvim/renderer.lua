@@ -2,7 +2,6 @@ local view = require("vista-nvim.view")
 local config = require("vista-nvim.config")
 local utils = require("vista-nvim.utils")
 local profile = require("vista-nvim.profile")
-local ctags = require("vista-nvim.types.uctags")
 
 local api = vim.api
 

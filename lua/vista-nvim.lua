@@ -141,10 +141,6 @@ function M.reset_highlight()
     end
 end
 
-function M._on_cursor_move(direction)
-    lib.on_cursor_move(direction)
-end
-
 function M.print_profile_summary()
     if not config.enable_profile then
         utils.echo_warning("Profile not enabled")

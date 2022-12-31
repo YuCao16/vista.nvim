@@ -1,4 +1,4 @@
-local bindings = require("vista-nvim.bindings")
+-- local bindings = require("vista-nvim.bindings")
 local config = require("vista-nvim.config")
 local utils = require("vista-nvim.utils")
 
@@ -10,9 +10,10 @@ M.is_prompt_exiting = false
 
 M.View = {
     bufnr = nil,
+    winnr = nil,
     tabpages = {},
-    width = 30,
-    side = "left",
+    width = config.initial_width or 30,
+    side = config.side or "left",
     winopts = {
         relativenumber = false,
         number = false,
@@ -35,6 +36,10 @@ M.View = {
         { name = "bufhidden", val = "hide" },
     },
 }
+
+function M.new()
+    return setmetatable({}, { __index = M.View })
+end
 
 ---Find a rogue VistaNvim buffer that might have been spawned by i.e. a session.
 ---@return integer|nil
@@ -82,11 +87,9 @@ end
 
 -- set user options and create tree buffer (should never be wiped)
 function M.setup()
-    M.View.side = config.side or M.View.side
-    M.View.width = config.initial_width or M.View.width
-
     M.View.bufnr = a.nvim_create_buf(false, false)
-    bindings.inject(M.View.bufnr)
+    M.View.winnr = a.nvim_get_current_win()
+    -- bindings.inject(M.View.bufnr)
 
     local buffer_name = generate_buffer_name()
 

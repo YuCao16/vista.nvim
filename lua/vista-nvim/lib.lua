@@ -7,7 +7,7 @@ local bindings = require("vista-nvim.bindings")
 local utils = require("vista-nvim.utils")
 local updater = require("vista-nvim.updater")
 local renderer = require("vista-nvim.renderer")
-local ctags = require("vista-nvim.types.uctags")
+-- local uctags = require("vista-nvim.types.uctags")
 
 local first_init_done = false
 
@@ -30,9 +30,9 @@ end
 
 function M.update()
     -- this function will update the vista content
-    if ctags.language_opt[vim.bo.filetype] == nil then
-        return
-    end
+    -- if ctags.language_opt[vim.bo.filetype] == nil then
+    --     return
+    -- end
     if view.is_win_open({ any_tabpage = true }) then
         updater.update()
     end
@@ -53,7 +53,7 @@ function M.setup_update_autocmd()
         "FocusGained",
     }, {
         pattern = "*",
-        callback = require'vista-nvim.lib'.update,
+        callback = require("vista-nvim.lib").update,
         group = vista_update_autocmd,
     })
 end
@@ -185,10 +185,6 @@ function M.on_keypress(key)
     local section_match = M.find_section_at_cursor({}, config.section)
     bindings.on_keypress(utils.unescape_keycode(key), section_match)
     M.update()
-end
-
-function M.on_cursor_move(direction)
-    -- this function will update something
 end
 
 function M.on_tab_change()
