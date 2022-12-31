@@ -1,5 +1,6 @@
 local M = {}
 
+M.highlight_hovered_item = false
 M.width = 30
 M.side = "right"
 M.show_guide = true
@@ -7,6 +8,7 @@ M.border = "rounded"
 M.auto_close = false
 M.auto_preview = false
 M.fold_markers = { "", "" }
+M.auto_unfold_hover = false
 M.disable_max_lines = 10000
 M.disable_max_sizes = 2000000 -- Default 2MB
 M.filetype_map = {}
@@ -16,3 +18,5 @@ M.filetype_map = {}
 M.filter_kind = {}
 
 M.enable_profile = false
+
+return M
