@@ -1,10 +1,10 @@
 local M = {}
 
 local providers = {
-    -- "vista-nvim/providers/jsx",
+    jsx = "vista-nvim/providers/jsx",
     lsp = "vista-nvim/providers/nvim_lsp",
-    -- "vista-nvim/providers/coc",
-    -- "vista-nvim/providers/markdown",
+    coc = "vista-nvim/providers/coc",
+    markdown = "vista-nvim/providers/markdown",
 }
 
 _G._symbols_outline_current_provider = nil
@@ -36,7 +36,8 @@ function M.request_symbols(on_symbols, _provider)
         if provider.should_use_provider(0) then
             _G._symbols_outline_current_provider = provider
             provider.request_symbols(on_symbols)
-            break
+            return
+            -- break
         end
     end
 end

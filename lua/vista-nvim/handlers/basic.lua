@@ -57,7 +57,7 @@ function M.handler(response)
     local items = lsp_parser.parse(response)
 
     M.state.outline_items = items
-    M.state.flattened_outline_items = lap_parser.flatten(items)
+    M.state.flattened_outline_items = lsp_parser.flatten(items)
 
     writer.parse_and_write(view.View.bufnr, M.state.flattened_outline_items)
 

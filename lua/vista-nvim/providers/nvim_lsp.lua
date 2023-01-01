@@ -36,8 +36,7 @@ end
 
 -- probably change this
 function M.should_use_provider(bufnr)
-    -- local clients = vim.lsp.get_active_clients_clients({ bufnr = bufnr })
-    local clients = vim.lsp.buf_get_clients(bufnr)
+    local clients = vim.lsp.get_active_clients({ bufnr = bufnr })
     local ret = false
 
     for id, client in pairs(clients) do

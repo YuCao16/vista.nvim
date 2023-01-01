@@ -7,7 +7,9 @@ local config = require("vista-nvim.config")
 
 local a = vim.api
 
-local M = {}
+local M = {
+    first_call = true,
+}
 
 function M.__refresh()
     if not view.is_win_open({ any_tabpage = false }) then
@@ -16,7 +18,7 @@ function M.__refresh()
 
     view.View.current_ft = vim.bo.filetype
     if utils_provider.current_support[view.View.current_ft] == nil then
-        print("nothing to update, vista remain unchange")
+        -- vim.notify("nothing to update, vista remain unchange")
         return
     end
 
@@ -24,24 +26,27 @@ function M.__refresh()
         view.View.provider = config.default_provider -- string
     else
         view.View.provider = config.filetype_map[view.View.current_ft] --string
-        print("updating filetype_map")
-        handler = handlers.get_handler(view.View.provider, { refresh = true })
+        -- vim.notify("updating filetype_map")
+        handler =
+            handlers.get_handler(view.View.provider, { refresh = M.first_call })
+        M.first_call = false
         if handler ~= nil then
             providers.request_symbols(handler, view.View.provider)
         end
         return
     end
-    handler = handlers.get_handler(view.View.provider, { refresh = true })
+
+    -- While setup map is not visible
+    handler =
+        handlers.get_handler(view.View.provider, { refresh = M.first_call })
+    M.first_call = false
     if handler ~= nil then
         providers.request_symbols(handler, view.View.provider)
     end
-    handler = handlers.get_handler(view.View.provider, { refresh = true })
-    if handler ~= nil then
-        providers.request_symbols(handler, view.View.provider)
-    end
-    print("updating default_provider")
+    -- vim.notify("updating default_provider")
 end
 
-M._refresh = utils_basic.debounce(M.__refresh, 100)
+--TODO: check out why dealy < 300 cause nil response while first calling
+M._refresh = utils_basic.debounce(M.__refresh, 300)
 
 return M

@@ -4,6 +4,7 @@ local M = {}
 
 local handlers = {
     lsp = "vista-nvim/handlers/basic",
+    markdown = "vista-nvim/handlers/basic",
 }
 
 function M.get_handler(provider, opt) 

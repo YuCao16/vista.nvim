@@ -18,9 +18,6 @@ M.State = {
         ["q"] = function()
             require("vista-nvim").close()
         end,
-        ["<CR>"] = function()
-            require("vista-nvim").close()
-        end,
     },
 }
 

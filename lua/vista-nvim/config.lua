@@ -19,13 +19,14 @@ M.filetype_map = {
     cpp = "lsp",
     c = "lsp",
     ruby = "lsp",
+    markdown = "markdown",
 }
 M.show_symbol_details = true
 M.auto_unfold_hover = false
 M.autofold_depth = nil
 M.fold_markers = { "", "" }
 M.symbol_blacklist = {}
-M.lsp_blacklist = {}
+M.lsp_blacklist = { "pyright" }
 -- A list of all symbols to display. Set to false to display all symbols.
 -- This can be a filetype map (see :help aerial-filetype-map)
 -- To see all available values, see :help SymbolKind
