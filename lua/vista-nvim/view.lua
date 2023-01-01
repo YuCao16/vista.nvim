@@ -1,6 +1,10 @@
+-- if provider_name.support() then
+--     request_symbol()
+--     return
+-- end
 local config = require("vista-nvim.config")
 local utils_basic = require("vista-nvim.utils.basic")
--- local bindings = require("vista-nvim.bindings")
+local utils_provider = require("vista-nvim.utils.provider")
 
 local a = vim.api
 
@@ -11,6 +15,7 @@ M.View = {
     tabpages = {}, -- record tabpage with vista.nvim
     width = 30,
     side = "left",
+    current_ft = nil,
     winopts = {
         relativenumber = false,
         number = false,
@@ -84,7 +89,6 @@ function M.setup()
     M.View.width = config.initial_width or M.View.width
 
     M.View.bufnr = a.nvim_create_buf(false, false)
-    -- bindings.inject(M.View.bufnr)
 
     local buffer_name = generate_buffer_name()
 
@@ -225,7 +229,8 @@ function M.close()
         return
     end
     if #a.nvim_list_wins() == 1 then
-        local modified_buffers = utils_basic.get_existing_buffers({ modified = true })
+        local modified_buffers =
+            utils_basic.get_existing_buffers({ modified = true })
 
         if #modified_buffers == 0 then
             a.nvim_command(":silent q!")
@@ -236,5 +241,37 @@ function M.close()
     end
     a.nvim_win_hide(M.get_winnr())
 end
+
+function M.__refresh()
+    if not M.is_win_open({ any_tabpage = false }) then
+        return
+    end
+
+    M.View.current_ft = vim.bo.filetype
+    if utils_provider.current_support[M.View.current_ft] == nil then
+        vim.notify("nothing to update, vista remain unchange")
+        return
+    end
+    if config.filetype_map[M.View.current_ft] == nil then
+        provider_name = config.default_provider
+    else
+        provider_name = config.filetype_map[M.View.current_ft]
+        vim.notify("updating filetype_map")
+        return
+        -- if provider_name.support() then
+        --     request_symbol()
+        --     return
+        -- end
+    end
+    vim.notify("updating default_provider")
+    return
+        -- if provider_name.support() then
+        --     request_symbol()
+        --     return
+        -- end
+        vim.notify("refresh done")
+end
+
+M._refresh = utils_basic.debounce(M.__refresh, 100)
 
 return M

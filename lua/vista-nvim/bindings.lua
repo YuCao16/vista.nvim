@@ -6,6 +6,8 @@ local a = vim.api
 
 local M = {}
 
+--TODO: Check if key binding works for multiple tabpages
+
 M.State = {
     -- bindings defined by the sections
     -- map(index -> key string)

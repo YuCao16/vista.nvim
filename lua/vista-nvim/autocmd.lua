@@ -1,4 +1,5 @@
 local config = require("vista-nvim.config")
+local view = require("vista-nvim.view")
 --TODO: find out if config is updated in this buffer
 
 local M = {}
@@ -8,6 +9,7 @@ local function setup_global_autocmd()
         vim.api.nvim_create_autocmd("CursorHold", {
             pattern = "*",
             command = "",
+            -- TODO: add highlight current cursor
             -- callback = function()
             --     M._highlight_current_item(nil)
             -- end,
@@ -16,20 +18,20 @@ local function setup_global_autocmd()
 
     vim.api.nvim_create_autocmd({
         "InsertLeave",
-        "WinEnter",
-        "BufEnter",
+        -- "WinEnter",
+        -- "BufEnter",
         "BufWinEnter",
         "TabEnter",
         "BufWritePost",
     }, {
         pattern = "*",
-        command = "",
-        -- callback = M._refresh,
+        callback = view._refresh,
     })
 
     vim.api.nvim_create_autocmd("WinEnter", {
         pattern = "*",
         command = "",
+        -- TODO: add preview close function
         -- callback = require("vista-nvim.preview").close,
     })
 end
@@ -39,12 +41,14 @@ local function setup_buffer_autocmd()
         vim.api.nvim_create_autocmd("CursorHold", {
             buffer = 0,
             command = "",
+            --TODO: add auto preview show function
             -- callback = require("vista-nvim.preview").show,
         })
     else
         vim.api.nvim_create_autocmd("CursorMoved", {
             buffer = 0,
             command = "",
+            --TODO: add auto preview close function
             -- callback = require("vista-nvim.preview").close,
         })
     end
