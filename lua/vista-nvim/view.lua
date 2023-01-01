@@ -1,6 +1,6 @@
 local config = require("vista-nvim.config")
-local bindings = require("vista-nvim.bindings")
 local utils_basic = require("vista-nvim.utils.basic")
+-- local bindings = require("vista-nvim.bindings")
 
 local a = vim.api
 

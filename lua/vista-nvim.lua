@@ -1,6 +1,6 @@
 local api = vim.api
 
-local lib = require("vista-nvim.bindings")
+local lib = require("vista-nvim.lib")
 local view = require("vista-nvim.view")
 local autocmd = require("vista-nvim.autocmd")
 local bindings = require("vista-nvim.bindings")
@@ -63,8 +63,8 @@ end
 
 function M._internal_setup()
     colors.setup()
-    bindings.setup()
     view.setup()
+    bindings.setup()
     autocmd.setup()
 
     lib.setup()
@@ -72,7 +72,7 @@ function M._internal_setup()
     if M.open_on_start then
         M._internal_open()
     end
-    vim.notify("lazy setup done")
+    -- vim.notify("lazy setup done")
 end
 
 function M.open()
