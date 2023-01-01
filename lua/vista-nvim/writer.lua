@@ -1,10 +1,14 @@
+local parser = require("vista-nvim.parsers.nvim_lsp")
+local config = require("vista-nvim.config")
+
 local M = {}
 
 local function is_buffer_vista(bufnr)
     local isValid = vim.api.nvim_buf_is_valid(bufnr)
-    local name = vim.api.nvim_buf_get_name(bufnr)
+    -- local name = vim.api.nvim_buf_get_name(bufnr)
+    local name = vim.fn.bufname(bufnr)
     local ft = vim.api.nvim_buf_get_option(bufnr, "filetype")
-    return string.match(name, "^VistaNvim_.*") ~= nil
+    return string.match(name, ".*VistaNvim_.*") ~= nil
         and ft == "VistaNvim"
         and isValid
 end
@@ -22,8 +26,8 @@ end
 -- and then written
 function M.parse_and_write(bufnr, flattened_outline_items)
     vim.api.nvim_echo({ { "vista parse and write", "None" } }, false, {})
-    -- local lines, hl_info = parser.get_lines(flattened_outline_items)
-    -- M.write_outline(bufnr, lines)
+    local lines, hl_info = parser.get_lines(flattened_outline_items)
+    M.write_vista(bufnr, lines)
 
     -- clear_virt_text(bufnr)
     -- local details = parser.get_details(flattened_outline_items)

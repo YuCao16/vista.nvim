@@ -1,5 +1,6 @@
 local config = require("vista-nvim.config")
-local view = require("vista-nvim.view")
+local updater = require("vista-nvim.updater")
+-- local view = require("vista-nvim.view")
 --TODO: find out if config is updated in this buffer
 
 local M = {}
@@ -25,7 +26,7 @@ local function setup_global_autocmd()
         "BufWritePost",
     }, {
         pattern = "*",
-        callback = view._refresh,
+        callback = updater._refresh,
     })
 
     vim.api.nvim_create_autocmd("WinEnter", {

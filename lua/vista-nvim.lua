@@ -1,6 +1,6 @@
 local api = vim.api
 
-local lib = require("vista-nvim.lib")
+-- local lib = require("vista-nvim.lib")
 local view = require("vista-nvim.view")
 local autocmd = require("vista-nvim.autocmd")
 local bindings = require("vista-nvim.bindings")
@@ -67,7 +67,7 @@ function M._internal_setup()
     bindings.setup()
     autocmd.setup()
 
-    lib.setup()
+    -- lib.setup()
 
     if M.open_on_start then
         M._internal_open()

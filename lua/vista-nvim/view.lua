@@ -4,7 +4,9 @@
 -- end
 local config = require("vista-nvim.config")
 local utils_basic = require("vista-nvim.utils.basic")
-local utils_provider = require("vista-nvim.utils.provider")
+-- local utils_provider = require("vista-nvim.utils.provider")
+-- local providers = require("vista-nvim.providers.init")
+-- local handlers = require("vista-nvim.handlers.init")
 
 local a = vim.api
 
@@ -13,6 +15,7 @@ local M = {}
 M.View = {
     bufnr = nil,
     tabpages = {}, -- record tabpage with vista.nvim
+    provider = nil,
     width = 30,
     side = "left",
     current_ft = nil,
@@ -242,36 +245,38 @@ function M.close()
     a.nvim_win_hide(M.get_winnr())
 end
 
-function M.__refresh()
-    if not M.is_win_open({ any_tabpage = false }) then
-        return
-    end
-
-    M.View.current_ft = vim.bo.filetype
-    if utils_provider.current_support[M.View.current_ft] == nil then
-        vim.notify("nothing to update, vista remain unchange")
-        return
-    end
-    if config.filetype_map[M.View.current_ft] == nil then
-        provider_name = config.default_provider
-    else
-        provider_name = config.filetype_map[M.View.current_ft]
-        vim.notify("updating filetype_map")
-        return
-        -- if provider_name.support() then
-        --     request_symbol()
-        --     return
-        -- end
-    end
-    vim.notify("updating default_provider")
-    return
-        -- if provider_name.support() then
-        --     request_symbol()
-        --     return
-        -- end
-        vim.notify("refresh done")
-end
-
-M._refresh = utils_basic.debounce(M.__refresh, 100)
+-- function M.__refresh()
+--     if not M.is_win_open({ any_tabpage = false }) then
+--         return
+--     end
+--
+--     M.View.current_ft = vim.bo.filetype
+--     if utils_provider.current_support[M.View.current_ft] == nil then
+--         vim.notify("nothing to update, vista remain unchange")
+--         return
+--     end
+--     if config.filetype_map[M.View.current_ft] == nil then
+--         M.View.provider = config.default_provider -- string
+--     else
+--         M.View.provider = config.filetype_map[M.View.current_ft] --string
+--         vim.notify("updating filetype_map")
+--         handler = handlers.get_handler(M.View.provider,{ refresh = true })
+--         providers.request_symbols(handler, _provider)
+--         -- if provider_name.support() then
+--         --     request_symbol()
+--         --     return
+--         -- end
+--         return
+--     end
+--     vim.notify("updating default_provider")
+--     return
+--         -- if provider_name.support() then
+--         --     request_symbol()
+--         --     return
+--         -- end
+--         vim.notify("refresh done")
+-- end
+--
+-- M._refresh = utils_basic.debounce(M.__refresh, 100)
 
 return M
