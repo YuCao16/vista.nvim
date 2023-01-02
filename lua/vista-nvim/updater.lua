@@ -29,7 +29,7 @@ function M.__refresh()
         -- vim.notify("updating filetype_map")
         handler =
             handlers.get_handler(view.View.provider, { refresh = M.first_call })
-        M.first_call = false
+        M.first_call = true
         if handler ~= nil then
             providers.request_symbols(handler, view.View.provider)
         end
@@ -39,7 +39,7 @@ function M.__refresh()
     -- While setup map is not visible
     handler =
         handlers.get_handler(view.View.provider, { refresh = M.first_call })
-    M.first_call = false
+    M.first_call = true
     if handler ~= nil then
         providers.request_symbols(handler, view.View.provider)
     end

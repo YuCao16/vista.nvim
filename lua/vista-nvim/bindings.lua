@@ -18,6 +18,12 @@ M.State = {
         ["q"] = function()
             require("vista-nvim").close()
         end,
+        ["o"] = function()
+            require("vista-nvim.handlers.basic").goto_location(true)
+        end,
+        ["O"] = function()
+            require("vista-nvim.handlers.basic").goto_location(false)
+        end,
     },
 }
 

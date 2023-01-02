@@ -12,6 +12,13 @@ local utils_basic = require("vista-nvim.utils.basic")
 
 local M = { setup_called = false, _internal_setup_called = false }
 
+-- data
+M.data = {
+    outline_items = {},
+    flattened_outline_items = {},
+    code_win = 0,
+}
+
 local deprecated_config_map = {}
 local function check_deprecated_field(key)
     if not vim.tbl_contains(vim.tbl_keys(deprecated_config_map), key) then
