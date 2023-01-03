@@ -14,15 +14,26 @@ M.State = {
     -- TODO: complete section bindings.
     section_bindings = {},
     -- fallback bindings if none of the sections have overrided them
+    -- TODO: change this by defining by handler
+    -- by move this to handler, setup while handler first called and switching provider
     view_bindings = {
         ["q"] = function()
             require("vista-nvim").close()
         end,
-        ["o"] = function()
+        ["<CR>"] = function()
             require("vista-nvim.handlers.basic").goto_location(true)
         end,
-        ["O"] = function()
+        ["p"] = function()
             require("vista-nvim.handlers.basic").goto_location(false)
+        end,
+        ["o"] = function()
+            require("vista-nvim.handlers.basic").toggle_fold()
+        end,
+        ["zr"] = function()
+            require("vista-nvim.handlers.basic").set_all_folded(true)
+        end,
+        ["zR"] = function()
+            require("vista-nvim.handlers.basic").set_all_folded(false)
         end,
     },
 }

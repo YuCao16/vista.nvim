@@ -35,6 +35,12 @@ local function setup_global_autocmd()
         -- TODO: add preview close function
         -- callback = require("vista-nvim.preview").close,
     })
+    vim.api.nvim_create_autocmd("CursorHold", {
+        pattern = "*",
+        callback = function()
+            require("vista-nvim.handlers.basic")._highlight_current_item(nil)
+        end,
+    })
 end
 
 local function setup_buffer_autocmd()

@@ -121,8 +121,15 @@ end
 function M.parse(response)
     local all_results = {}
 
+    -- this ensure that if multiple lsp are using, only got symbol from one of them
+    -- avoid duplicate symbols
+    local got_result = false
+
     -- flatten results to one giant table of symbols
     for client_id, client_response in pairs(response) do
+        if got_result then
+            goto continue
+        end
         if config.is_client_blacklisted(client_id) then
             print("skipping client " .. client_id)
             goto continue
@@ -136,6 +143,7 @@ function M.parse(response)
         for _, value in pairs(result) do
             table.insert(all_results, value)
         end
+        got_result = true
 
         ::continue::
     end
@@ -181,7 +189,7 @@ function M.get_lines(flattened_outline_items)
                 node_line,
                 from,
                 to,
-                "VistaOutlineConnector",
+                "VistaConnector",
             })
         end
 
@@ -190,8 +198,8 @@ function M.get_lines(flattened_outline_items)
             if config.show_guides then
                 -- makes the guides
                 if index == 1 then
-                    line[index] = " "
-                -- i f index is last, add a bottom marker if current item is last,
+                    line[index] = ""
+                -- if index is last, add a bottom marker if current item is last,
                 -- else add a middle marker
                 elseif index == #line then
                     -- add fold markers

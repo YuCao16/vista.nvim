@@ -9,11 +9,17 @@ local providers = {
 
 _G._symbols_outline_current_provider = nil
 
-function M.has_provider(bufnr)
+function M.has_provider(_provider)
     local ret = false
+    if _provider ~= nil then
+        provider = require(providers[_provider])
+        if provider.should_use_provider(0) then
+            return true
+        end
+    end
     for _, value in ipairs(providers) do
         local provider = require(value)
-        if provider.should_use_provider(bufnr) then
+        if provider.should_use_provider(0) then
             ret = true
             break
         end

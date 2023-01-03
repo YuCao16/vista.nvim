@@ -1,4 +1,4 @@
-local md_parser = require("vista-nvim.providers.components.markdown")
+local md_parser = require("vista-nvim.parsers.markdown")
 
 local M = {}
 

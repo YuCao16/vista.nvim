@@ -55,12 +55,10 @@ end
 -- UI
 ------------
 M.markers = {
-    bottom = "└─",
+    bottom = "└",
     middle = "│",
     vertical = "│",
     horizontal = " ",
-    -- middle = "├─",
-    -- horizontal = "─",
 }
 
 return M

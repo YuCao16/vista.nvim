@@ -28,8 +28,8 @@ function M.__refresh()
         view.View.provider = config.filetype_map[view.View.current_ft] --string
         -- vim.notify("updating filetype_map")
         handler =
-            handlers.get_handler(view.View.provider, { refresh = M.first_call })
-        M.first_call = true
+            handlers.get_handler(view.View.provider, { refresh = not M.first_call })
+        M.first_call = false
         if handler ~= nil then
             providers.request_symbols(handler, view.View.provider)
         end
@@ -38,8 +38,8 @@ function M.__refresh()
 
     -- While setup map is not visible
     handler =
-        handlers.get_handler(view.View.provider, { refresh = M.first_call })
-    M.first_call = true
+        handlers.get_handler(view.View.provider, { refresh = not M.first_call })
+    M.first_call = false
     if handler ~= nil then
         providers.request_symbols(handler, view.View.provider)
     end

@@ -1,11 +1,11 @@
 local M = {}
 
-M.highlight_hovered_item = false
+M.highlight_hovered_item = true
 M.width = 30
 M.side = "right"
 M.bindings = nil
 M.disable_default_keybindings = false
-M.show_guide = true
+M.show_guides = true
 M.border = "rounded"
 M.auto_close = false
 M.auto_preview = false
@@ -26,40 +26,41 @@ M.auto_unfold_hover = false
 M.autofold_depth = nil
 M.fold_markers = { "", "" }
 M.symbol_blacklist = {}
-M.lsp_blacklist = { "pyright" }
+M.lsp_blacklist = {}
+-- M.lsp_blacklist = { "pyright" }
 -- A list of all symbols to display. Set to false to display all symbols.
 -- This can be a filetype map (see :help aerial-filetype-map)
 -- To see all available values, see :help SymbolKind
 M.filter_kind = {}
 M.symbols = {
-    File = { icon = "", hl = "TSURI" },
-    Module = { icon = "", hl = "TSNamespace" },
-    Namespace = { icon = "", hl = "TSNamespace" },
-    Package = { icon = "", hl = "TSNamespace" },
-    Class = { icon = "𝓒", hl = "TSType" },
-    Method = { icon = "ƒ", hl = "TSMethod" },
-    Property = { icon = "", hl = "TSMethod" },
-    Field = { icon = "", hl = "TSField" },
-    Constructor = { icon = "", hl = "TSConstructor" },
-    Enum = { icon = "ℰ", hl = "TSType" },
-    Interface = { icon = "ﰮ", hl = "TSType" },
-    Function = { icon = "", hl = "TSFunction" },
-    Variable = { icon = "", hl = "TSConstant" },
-    Constant = { icon = "", hl = "TSConstant" },
-    String = { icon = "𝓐", hl = "TSString" },
-    Number = { icon = "#", hl = "TSNumber" },
-    Boolean = { icon = "⊨", hl = "TSBoolean" },
-    Array = { icon = "", hl = "TSConstant" },
-    Object = { icon = "⦿", hl = "TSType" },
-    Key = { icon = "🔐", hl = "TSType" },
-    Null = { icon = "NULL", hl = "TSType" },
-    EnumMember = { icon = "", hl = "TSField" },
-    Struct = { icon = "𝓢", hl = "TSType" },
-    Event = { icon = "🗲", hl = "TSType" },
-    Operator = { icon = "+", hl = "TSOperator" },
-    TypeParameter = { icon = "𝙏", hl = "TSParameter" },
-    Component = { icon = "", hl = "TSFunction" },
-    Fragment = { icon = "", hl = "TSConstant" },
+    File = { icon = "", hl = "@URI" },
+    Module = { icon = "", hl = "@Namespace" },
+    Namespace = { icon = "", hl = "@Namespace" },
+    Package = { icon = "", hl = "@Namespace" },
+    Class = { icon = "𝓒", hl = "@Type" },
+    Method = { icon = "ƒ", hl = "@Method" },
+    Property = { icon = "", hl = "@Method" },
+    Field = { icon = "", hl = "@Field" },
+    Constructor = { icon = "", hl = "@Constructor" },
+    Enum = { icon = "ℰ", hl = "@Type" },
+    Interface = { icon = "ﰮ", hl = "@Type" },
+    Function = { icon = "", hl = "@Function" },
+    Variable = { icon = "", hl = "@Constant" },
+    Constant = { icon = "", hl = "@Constant" },
+    String = { icon = "𝓐", hl = "@String" },
+    Number = { icon = "#", hl = "@Number" },
+    Boolean = { icon = "⊨", hl = "@Boolean" },
+    Array = { icon = "", hl = "@Constant" },
+    Object = { icon = "⦿", hl = "@Type" },
+    Key = { icon = "🔐", hl = "@Type" },
+    Null = { icon = "NULL", hl = "@Type" },
+    EnumMember = { icon = "", hl = "@Field" },
+    Struct = { icon = "𝓢", hl = "@Type" },
+    Event = { icon = "🗲", hl = "@Type" },
+    Operator = { icon = "+", hl = "@Operator" },
+    TypeParameter = { icon = "𝙏", hl = "@Parameter" },
+    Component = { icon = "", hl = "@Function" },
+    Fragment = { icon = "", hl = "@Constant" },
 }
 
 M.enable_profile = false

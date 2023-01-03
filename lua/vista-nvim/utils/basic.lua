@@ -2,7 +2,7 @@ local M = {}
 
 function M.echo_warning(msg)
     api.nvim_command("echohl WarningMsg")
-    api.nvim_command("echom '[SidebarNvim] " .. msg:gsub("'", "''") .. "'")
+    api.nvim_command("echom '[VistaNvim] " .. msg:gsub("'", "''") .. "'")
     api.nvim_command("echohl None")
 end
 
@@ -44,6 +44,27 @@ function M.get_existing_buffers(opts)
             and vim.fn.buflisted(buf) == 1
             and modified_filter
     end, api.nvim_list_bufs())
+end
+
+M.flash_highlight = function(bufnr, lnum)
+    hl_group = "VistaFlashLine"
+    durationMs = 450
+    local ns =
+        vim.api.nvim_buf_add_highlight(bufnr, 0, hl_group, lnum - 1, 0, -1)
+    local remove_highlight = function()
+        vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+    end
+    vim.defer_fn(remove_highlight, durationMs)
+end
+
+function M.items_dfs(callback, children)
+    for _, val in ipairs(children) do
+        callback(val)
+
+        if val.children then
+            M.items_dfs(callback, val.children)
+        end
+    end
 end
 
 return M
