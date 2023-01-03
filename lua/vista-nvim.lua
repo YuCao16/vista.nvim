@@ -1,14 +1,15 @@
 local api = vim.api
 
--- local lib = require("vista-nvim.lib")
 local view = require("vista-nvim.view")
 local autocmd = require("vista-nvim.autocmd")
 local bindings = require("vista-nvim.bindings")
-local colors = require("vista-nvim.colors")
 local profile = require("vista-nvim.profile")
 local render = require("vista-nvim.render")
 local writer = require("vista-nvim.writer")
 local utils_basic = require("vista-nvim.utils.basic")
+local highlight = require("vista-nvim.highlight")
+-- local lib = require("vista-nvim.lib")
+-- local colors = require("vista-nvim.colors")
 
 local M = { setup_called = false, _internal_setup_called = false }
 
@@ -17,6 +18,7 @@ M.data = {
     outline_items = {},
     flattened_outline_items = {},
     code_win = 0,
+    current_bufnr = nil,
 }
 
 local deprecated_config_map = {}
@@ -69,12 +71,13 @@ function M.setup(opts)
 end
 
 function M._internal_setup()
-    colors.setup()
+    highlight.setup()
     view.setup()
     bindings.setup()
     autocmd.setup()
 
     -- lib.setup()
+    -- colors.setup()
 
     if M.open_on_start then
         M._internal_open()
