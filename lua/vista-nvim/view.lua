@@ -124,6 +124,14 @@ function M.get_winnr(tabpage)
     end
 end
 
+function M.is_buf_notify(bufnr)
+    if vim.bo[bufnr].filetype == "notify" then
+        return true
+    else
+        return false
+    end
+end
+
 local goto_tbl = { right = "h", left = "l", top = "j", bottom = "k" }
 
 function M._prevent_buffer_override()
@@ -134,9 +142,13 @@ function M._prevent_buffer_override()
             return
         end
 
+        if M.is_buf_notify(bufnr) then
+            return
+        end
         vim.cmd("buffer " .. M.View.bufnr)
 
         if #vim.api.nvim_list_wins() < 2 then
+            -- TODO: check if only vista and notify window
             vim.cmd("vsplit")
         else
             vim.cmd("wincmd " .. goto_tbl[M.View.side])
@@ -156,7 +168,7 @@ function M._prevent_buffer_override()
             a.nvim_win_set_option(0, key, value)
         end
 
-        -- TODO: Add resize
+        -- TODO: Add resize, this may needed in the future
         -- M.resize()
     end)
 end
@@ -246,43 +258,9 @@ function M.close()
 end
 
 function M.destroy()
-    view.close()
+    M.close()
 
-    view._wipe_rogue_buffer()
+    M._wipe_rogue_buffer()
 end
-
--- function M.__refresh()
---     if not M.is_win_open({ any_tabpage = false }) then
---         return
---     end
---
---     M.View.current_ft = vim.bo.filetype
---     if utils_provider.current_support[M.View.current_ft] == nil then
---         vim.notify("nothing to update, vista remain unchange")
---         return
---     end
---     if config.filetype_map[M.View.current_ft] == nil then
---         M.View.provider = config.default_provider -- string
---     else
---         M.View.provider = config.filetype_map[M.View.current_ft] --string
---         vim.notify("updating filetype_map")
---         handler = handlers.get_handler(M.View.provider,{ refresh = true })
---         providers.request_symbols(handler, _provider)
---         -- if provider_name.support() then
---         --     request_symbol()
---         --     return
---         -- end
---         return
---     end
---     vim.notify("updating default_provider")
---     return
---         -- if provider_name.support() then
---         --     request_symbol()
---         --     return
---         -- end
---         vim.notify("refresh done")
--- end
---
--- M._refresh = utils_basic.debounce(M.__refresh, 100)
 
 return M

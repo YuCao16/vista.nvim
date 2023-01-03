@@ -7,8 +7,15 @@ local config = require("vista-nvim.config")
 
 local a = vim.api
 
+-- local M = {
+--     first_call = true,
+-- }
+
 local M = {
-    first_call = true,
+    first_call = {
+        lsp = true,
+        markdown = true,
+    },
 }
 
 function M.__refresh()
@@ -27,9 +34,11 @@ function M.__refresh()
     else
         view.View.provider = config.filetype_map[view.View.current_ft] --string
         -- vim.notify("updating filetype_map")
-        handler =
-            handlers.get_handler(view.View.provider, { refresh = not M.first_call })
-        M.first_call = false
+        handler = handlers.get_handler(
+            view.View.provider,
+            { refresh = not M.first_call[view.View.provider] }
+        )
+        M.first_call[view.View.provider] = false
         if handler ~= nil then
             providers.request_symbols(handler, view.View.provider)
         end
@@ -37,9 +46,11 @@ function M.__refresh()
     end
 
     -- While setup map is not visible
-    handler =
-        handlers.get_handler(view.View.provider, { refresh = not M.first_call })
-    M.first_call = false
+    handler = handlers.get_handler(
+        view.View.provider,
+        { refresh = not M.first_call[view.View.provider] }
+    )
+    M.first_call[view.View.provider] = false
     if handler ~= nil then
         providers.request_symbols(handler, view.View.provider)
     end

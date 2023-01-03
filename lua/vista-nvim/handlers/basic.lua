@@ -7,9 +7,53 @@ local utils_basic = require("vista-nvim.utils.basic")
 local view = require("vista-nvim.view")
 local providers = require("vista-nvim.providers.init")
 
+local a = vim.api
+
 local M = {}
 
 M.state = require("vista-nvim").data
+
+M.handler_bindings = {
+    ["<CR>"] = function()
+        require("vista-nvim.handlers.basic").goto_location(true)
+    end,
+    ["<2-LeftMouse>"] = function()
+        require("vista-nvim.handlers.basic").goto_location(true)
+    end,
+    ["p"] = function()
+        require("vista-nvim.handlers.basic").goto_location(false)
+    end,
+    ["o"] = function()
+        require("vista-nvim.handlers.basic").toggle_fold()
+    end,
+    ["zr"] = function()
+        require("vista-nvim.handlers.basic").set_all_folded(true)
+    end,
+    ["zR"] = function()
+        require("vista-nvim.handlers.basic").set_all_folded(false)
+    end,
+}
+
+-- convert a function to callback string
+function M.execute_binding(key)
+    key = utils_basic.unescape_keycode(key)
+    M.handler_bindings[key]()
+end
+
+function M.setup_handler_binding()
+    for key, _ in pairs(M.handler_bindings) do
+        a.nvim_buf_set_keymap(
+            view.View.bufnr,
+            "n",
+            key,
+            string.format(
+                ":lua require('vista-nvim.handlers.basic').execute_binding('%s')<CR>",
+                utils_basic.escape_keycode(key)
+            ),
+            { noremap = true, silent = true, nowait = true }
+        )
+    end
+end
 
 local function wipe_state()
     M.state = { outline_items = {}, flattened_outline_items = {}, code_win = 0 }
@@ -45,6 +89,8 @@ function M.refresh_handler(response)
 end
 
 function M.handler(response)
+    vim.api.nvim_echo({ { "handler called firstly", "None" } }, false, {})
+    M.setup_handler_binding()
     if response == nil or type(response) ~= "table" then
         return
     end
@@ -153,10 +199,21 @@ function M.set_all_folded(folded, nodes)
     M._update_lines()
 end
 
+function M.is_empty_line()
+    if a.nvim_get_current_line() == "" then
+        return true
+    else
+        return false
+    end
+end
+
 ---------------
 -- highlight
 ---------------
 -- TODO: toggle logic need improvement
+-- eg. if current line is return, then highlight return to class name not remain
+-- around current/previous function
+-- By change the end of item be the start of next item.
 function M._highlight_current_item(winnr)
     local has_provider = providers.has_provider(view.View.provider)
 
@@ -166,9 +223,12 @@ function M._highlight_current_item(winnr)
     local doesnt_have_outline_buf =
         not view.is_win_open({ any_tabpage = false })
 
+    local is_empty_line = M.is_empty_line()
+
     local should_exit = not has_provider
         or doesnt_have_outline_buf
         or is_current_buffer_the_outline
+        or is_empty_line
     -- local should_exit = is_current_buffer_the_outline
 
     -- Make a special case if we have a window number

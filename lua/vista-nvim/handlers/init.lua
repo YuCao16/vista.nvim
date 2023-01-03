@@ -1,5 +1,8 @@
 -- local view = require("vista-nvim.view")
 
+-- TODO: make the result of parser of ctags the same as lsp, so that handler
+-- and its corresponding functions is shareable.
+
 local M = {}
 
 local handlers = {
@@ -7,7 +10,7 @@ local handlers = {
     markdown = "vista-nvim/handlers/basic",
 }
 
-function M.get_handler(provider, opt) 
+function M.get_handler(provider, opt)
     if handlers[provider] ~= nil then
         local handler = require(handlers["lsp"])
         if opt.refresh then

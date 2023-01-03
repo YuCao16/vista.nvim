@@ -14,38 +14,16 @@ M.State = {
     -- TODO: complete section bindings.
     section_bindings = {},
     -- fallback bindings if none of the sections have overrided them
-    -- TODO: change this by defining by handler
-    -- by move this to handler, setup while handler first called and switching provider
+    -- TODO: create bindings map table for user: eg. {folding = ["p"]}
+    -- this require a general name of for example `goto_location` for all
+    -- handlers with this function.
+    -- this should be set in handlers.init.lua
     view_bindings = {
         ["q"] = function()
             require("vista-nvim").close()
         end,
-        ["<CR>"] = function()
-            require("vista-nvim.handlers.basic").goto_location(true)
-        end,
-        ["p"] = function()
-            require("vista-nvim.handlers.basic").goto_location(false)
-        end,
-        ["o"] = function()
-            require("vista-nvim.handlers.basic").toggle_fold()
-        end,
-        ["zr"] = function()
-            require("vista-nvim.handlers.basic").set_all_folded(true)
-        end,
-        ["zR"] = function()
-            require("vista-nvim.handlers.basic").set_all_folded(false)
-        end,
     },
 }
-
--- this function is working with M.unescape_keycode to avoid lua bad argument error
--- function M.escape_keycode(key)
---     return key:gsub("<", "["):gsub(">", "]")
--- end
---
--- function M.unescape_keycode(key)
---     return key:gsub("%[", "<"):gsub("%]", ">")
--- end
 
 -- convert a function to callback string
 function M.execute_binding(key)
