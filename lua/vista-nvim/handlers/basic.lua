@@ -61,9 +61,6 @@ end
 
 function M._update_lines()
     M.state.flattened_outline_items = lsp_parser.flatten(M.state.outline_items)
-    if M.state.flattened_outline_items == nil then
-        vim.notify("flatten nil")
-    end
     writer.parse_and_write(view.View.bufnr, M.state.flattened_outline_items)
 end
 
@@ -72,20 +69,6 @@ function M._merge_items(items)
         { children = items },
         { children = M.state.outline_items }
     )
-end
-
-function M.refresh_handler(response)
-    if response == nil or type(response) ~= "table" then
-        return
-    end
-
-    local items = lsp_parser.parse(response)
-    M._merge_items(items)
-
-    M.state.code_win = vim.api.nvim_get_current_win()
-    M.state.current_bufnr = vim.fn.bufnr()
-
-    M._update_lines()
 end
 
 function M.handler(response)
@@ -112,7 +95,21 @@ function M.handler(response)
 
     writer.parse_and_write(view.View.bufnr, M.state.flattened_outline_items)
 
-    -- M._highlight_current_item(M.state.code_win)
+    M._highlight_current_item(M.state.code_win)
+end
+
+function M.refresh_handler(response)
+    if response == nil or type(response) ~= "table" then
+        return
+    end
+
+    local items = lsp_parser.parse(response)
+    M._merge_items(items)
+
+    M.state.code_win = vim.api.nvim_get_current_win()
+    M.state.current_bufnr = vim.fn.bufnr()
+
+    M._update_lines()
 end
 
 ---------------
@@ -121,8 +118,10 @@ end
 
 function M._current_node()
     local current_line = vim.api.nvim_win_get_cursor(view.get_winnr())[1]
+        - view.View.title_line
     return M.state.flattened_outline_items[current_line]
 end
+
 
 function M.goto_location(change_focus)
     local node = M._current_node()
@@ -172,8 +171,7 @@ function M._set_folded(folded, move_cursor, node_index)
 end
 
 function M.toggle_fold()
-    local node = M.state.flattened_outline_items[node_index]
-        or M._current_node()
+    local node = M._current_node()
     if folding.is_foldable(node) then
         if folding.is_folded(node) then
             M._set_folded(false)
@@ -270,7 +268,10 @@ function M._highlight_current_item(winnr)
     if leaf_node then
         for index, node in ipairs(M.state.flattened_outline_items) do
             if node == leaf_node then
-                vim.api.nvim_win_set_cursor(view.get_winnr(), { index, 1 })
+                vim.api.nvim_win_set_cursor(
+                    view.get_winnr(),
+                    { index + view.View.title_line, 1 }
+                )
                 break
             end
         end

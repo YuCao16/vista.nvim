@@ -1,5 +1,7 @@
 local M = {}
 
+local api = vim.api
+
 function M.echo_warning(msg)
     api.nvim_command("echohl WarningMsg")
     api.nvim_command("echom '[VistaNvim] " .. msg:gsub("'", "''") .. "'")

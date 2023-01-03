@@ -5,7 +5,7 @@ local function link(group1, group2)
     vim.api.nvim_set_hl(0, group1, { link = group2, default = true })
 end
 
-local function create(group_name, bg, fg, ctermfg, ctermbg)
+local function create(group_name, bg, fg, bold, ctermfg, ctermbg)
     -- if create highlight_group with table input
     if type(bg) == "table" then
         vim.api.nvim_set_hl(0, group_name, bg)
@@ -16,6 +16,7 @@ local function create(group_name, bg, fg, ctermfg, ctermbg)
         bg = bg,
         ctermfg = ctermfg,
         ctermbg = ctermbg,
+        bold = bold
     })
 end
 
@@ -60,7 +61,8 @@ function M.setup()
     end
 
     -- Create some highlight
-    create("VistaConnector", nil, "#a0a8b7", nil, nil)
+    create("VistaConnector", nil, "#a0a8b7", nil, nil, nil)
+    create("VistaOutlineTitle", nil, "#4fa6ed", true, nil)
     create("VistaFocusedSymbol", M.get_highlight_bg_fg("FocusedSymbol"))
     link("VistaFlashLine", "IncSearch")
 

@@ -6,6 +6,7 @@ M.side = "right"
 M.bindings = nil
 M.disable_default_keybindings = false
 M.show_guides = true
+M.show_title = true
 M.border = "rounded"
 M.auto_close = false
 M.auto_preview = false
@@ -26,8 +27,8 @@ M.auto_unfold_hover = false
 M.autofold_depth = 2
 M.fold_markers = { "", "" }
 M.symbol_blacklist = {}
-M.lsp_blacklist = { "pyright" }
--- M.lsp_blacklist = { "jedi_language_server" }
+-- M.lsp_blacklist = { "pyright" }
+M.lsp_blacklist = { "jedi_language_server" }
 
 -- A list of all symbols to display. Set to false to display all symbols.
 -- This can be a filetype map (see :help aerial-filetype-map)

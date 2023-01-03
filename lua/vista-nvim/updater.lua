@@ -7,10 +7,6 @@ local config = require("vista-nvim.config")
 
 local a = vim.api
 
--- local M = {
---     first_call = true,
--- }
-
 local M = {
     first_call = {
         lsp = true,
@@ -24,6 +20,7 @@ function M.__refresh()
     end
 
     view.View.current_ft = vim.bo.filetype
+    view.View.current_filepath = vim.fn.expand("%:p")
     if utils_provider.current_support[view.View.current_ft] == nil then
         -- vim.notify("nothing to update, vista remain unchange")
         return

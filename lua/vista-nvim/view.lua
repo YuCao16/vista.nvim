@@ -1,12 +1,5 @@
--- if provider_name.support() then
---     request_symbol()
---     return
--- end
 local config = require("vista-nvim.config")
 local utils_basic = require("vista-nvim.utils.basic")
--- local utils_provider = require("vista-nvim.utils.provider")
--- local providers = require("vista-nvim.providers.init")
--- local handlers = require("vista-nvim.handlers.init")
 
 local a = vim.api
 
@@ -19,6 +12,8 @@ M.View = {
     width = 30,
     side = "left",
     current_ft = nil,
+    current_filepath = nil,
+    title_line = 0,
     winopts = {
         relativenumber = false,
         number = false,
@@ -90,6 +85,9 @@ end
 function M.setup()
     M.View.side = config.side or M.View.side
     M.View.width = config.initial_width or M.View.width
+    if config.show_title then
+        M.View.title_line = 2
+    end
 
     M.View.bufnr = a.nvim_create_buf(false, false)
 

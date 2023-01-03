@@ -64,7 +64,7 @@ local function parse_result(result, depth, hierarchy, parent)
                 local child_hir = utils_table.array_copy(hir)
                 table.insert(child_hir, isLast)
                 children =
-                    parse_result(value.children, level + 1, child_hir, node)
+                parse_result(value.children, level + 1, child_hir, node)
             end
 
             node.children = children
@@ -166,13 +166,6 @@ function M.flatten(outline_items, ret, depth)
             M.flatten(value.children, ret, depth + 1)
         end
     end
-
-    -- if depth == 1 then
-    --   for index, value in ipairs(ret) do
-    --     value.line_in_outline = index
-    --   end
-    -- end
-
     return ret
 end
 
@@ -202,12 +195,11 @@ function M.get_lines(flattened_outline_items)
                 -- makes the guides
                 if index == 1 then
                     line[index] = ""
-                -- if index is last, add a bottom marker if current item is last,
-                -- else add a middle marker
+                    -- if index is last, add a bottom marker if current item is last,
+                    -- else add a middle marker
                 elseif index == #line then
                     -- add fold markers
-                    if
-                        config.fold_markers
+                    if config.fold_markers
                         and folding.is_foldable(node)
                     then
                         if folding.is_folded(node) then
@@ -221,37 +213,37 @@ function M.get_lines(flattened_outline_items)
                             running_length + vim.fn.strlen(line[index]) - 1
                         )
 
-                    -- the root level has no vertical markers
+                        -- the root level has no vertical markers
                     elseif depth > 1 then
                         if node.isLast then
                             line[index] = render.markers.bottom
                             add_guide_hl(
                                 running_length,
                                 running_length
-                                    + vim.fn.strlen(render.markers.bottom)
-                                    - 1
+                                + vim.fn.strlen(render.markers.bottom)
+                                - 1
                             )
                         else
                             line[index] = render.markers.middle
                             add_guide_hl(
                                 running_length,
                                 running_length
-                                    + vim.fn.strlen(render.markers.middle)
-                                    - 1
+                                + vim.fn.strlen(render.markers.middle)
+                                - 1
                             )
                         end
                     end
-                -- else if the parent was not the last in its group, add a
-                -- vertical marker because there are items under us and we need
-                -- to point to those
+                    -- else if the parent was not the last in its group, add a
+                    -- vertical marker because there are items under us and we need
+                    -- to point to those
                 elseif not node.hierarchy[index] and depth > 1 then
                     line[index + marker_space] = render.markers.vertical
                     add_guide_hl(
                         running_length - 1 + 2 * marker_space,
                         running_length
-                            + vim.fn.strlen(render.markers.vertical)
-                            - 1
-                            + 2 * marker_space
+                        + vim.fn.strlen(render.markers.vertical)
+                        - 1
+                        + 2 * marker_space
                     )
                 end
             end
