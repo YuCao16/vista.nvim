@@ -185,7 +185,7 @@ local function get_defined_width()
     return math.floor(vim.o.columns * percent_as_decimal)
 end
 
---- Returns the window width for sidebar-nvim within the tabpage specified
+--- Returns the window width for vista-nvim within the tabpage specified
 ---@param tabpage number: (optional) the number of the chosen tabpage. Defaults to current tabpage.
 ---@return number
 function M.get_width(tabpage)
@@ -243,6 +243,12 @@ function M.close()
         end
     end
     a.nvim_win_hide(M.get_winnr())
+end
+
+function M.destroy()
+    view.close()
+
+    view._wipe_rogue_buffer()
 end
 
 -- function M.__refresh()

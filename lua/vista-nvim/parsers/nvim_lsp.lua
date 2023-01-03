@@ -5,6 +5,9 @@ local folding = require("vista-nvim.folding")
 
 local M = {}
 
+-- TODO: implement multiple Lsp coorperate
+-- Now this is disalbe in M.parse()
+
 ---Parses result from LSP into a table of symbols
 ---@param result table The result from a language server.
 ---@param depth number? The current depth of the symbol in the hierarchy.

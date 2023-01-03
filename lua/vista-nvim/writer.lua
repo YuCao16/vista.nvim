@@ -1,5 +1,6 @@
 local parser = require("vista-nvim.parsers.nvim_lsp")
 local config = require("vista-nvim.config")
+local highlight = require("vista-nvim.highlight")
 
 local M = {}
 
@@ -28,7 +29,31 @@ function M.add_highlights(bufnr, hl_info, nodes)
     end
 
     -- TODO: add hover highlight
-    -- M.add_hover_highlights(bufnr, nodes)
+    M.add_hover_highlights(bufnr, nodes)
+end
+
+M.add_hover_highlights = function(bufnr, nodes)
+    if not config.highlight_hovered_item then
+        return
+    end
+
+    -- clear old highlight
+    highlight.clear_hover_highlight(bufnr)
+    for _, node in ipairs(nodes) do
+        if not node.hovered then
+            goto continue
+        end
+
+        local marker_fac = (config.fold_markers and 1) or 0
+        if node.prefix_length then
+            highlight.add_hover_highlight(
+                bufnr,
+                node.line_in_outline - 1,
+                node.prefix_length
+            )
+        end
+        ::continue::
+    end
 end
 
 function M.write_vista(bufnr, lines)

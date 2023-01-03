@@ -1,7 +1,5 @@
 local config = require("vista-nvim.config")
 local updater = require("vista-nvim.updater")
--- local view = require("vista-nvim.view")
---TODO: find out if config is updated in this buffer
 
 local M = {}
 
@@ -9,11 +7,11 @@ local function setup_global_autocmd()
     if config.highlight_hovered_item or config.auto_unfold_hover then
         vim.api.nvim_create_autocmd("CursorHold", {
             pattern = "*",
-            command = "",
-            -- TODO: add highlight current cursor
-            -- callback = function()
-            --     M._highlight_current_item(nil)
-            -- end,
+            callback = function()
+                require("vista-nvim.handlers.basic")._highlight_current_item(
+                    nil
+                )
+            end,
         })
     end
 
@@ -34,12 +32,6 @@ local function setup_global_autocmd()
         command = "",
         -- TODO: add preview close function
         -- callback = require("vista-nvim.preview").close,
-    })
-    vim.api.nvim_create_autocmd("CursorHold", {
-        pattern = "*",
-        callback = function()
-            require("vista-nvim.handlers.basic")._highlight_current_item(nil)
-        end,
     })
 end
 

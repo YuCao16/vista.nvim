@@ -12,7 +12,7 @@ local highlight = require("vista-nvim.highlight")
 -- local colors = require("vista-nvim.colors")
 
 local M = { setup_called = false, _internal_setup_called = false }
-
+-- TODO: clear cache and memory mechanic
 -- data
 M.data = {
     outline_items = {},
@@ -61,13 +61,6 @@ function M.setup(opts)
     end
 
     M.setup_called = true
-
-    -- TODO: move to open command to achieve lazy load
-    -- check if vim enter has already been called, if so, do initialize
-    -- docs for `vim.v.vim_did_enter`: https://neovim.io/doc/user/autocmd.html#VimEnter
-    -- if vim.v.vim_did_enter == 1 then
-    --     M._internal_setup()
-    -- end
 end
 
 function M._internal_setup()
@@ -91,12 +84,12 @@ function M.open()
         M._internal_setup_called = true
     end
     view.open()
-    vim.api.nvim_echo({ { "vista open", "None" } }, false, {})
+    -- vim.api.nvim_echo({ { "vista open", "None" } }, false, {})
 end
 
 function M.close()
     view.close()
-    vim.api.nvim_echo({ { "vista close", "None" } }, false, {})
+    -- vim.api.nvim_echo({ { "vista close", "None" } }, false, {})
 end
 
 function M.toggle()
@@ -110,6 +103,29 @@ function M.toggle()
         view.open()
     end
     vim.api.nvim_echo({ { "vista toggle", "None" } }, false, {})
+end
+
+function M.on_win_leave()
+    vim.defer_fn(function()
+        if not view.is_win_open() then
+            return
+        end
+
+        local windows = api.nvim_list_wins()
+        local curtab = api.nvim_get_current_tabpage()
+        local wins_in_tabpage = vim.tbl_filter(function(w)
+            return api.nvim_win_get_tabpage(w) == curtab
+        end, windows)
+        if #windows == 1 then
+            M.close()
+        elseif #wins_in_tabpage == 1 then
+            api.nvim_command(":tabclose")
+        end
+    end, 50)
+end
+
+function M.on_vim_leave()
+    view.destroy()
 end
 
 return M

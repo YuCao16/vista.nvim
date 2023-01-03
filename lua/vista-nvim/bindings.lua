@@ -38,36 +38,18 @@ M.State = {
     },
 }
 
----maps the table|string of keys to the action
----@param keys table|string
----@param action function|string
-function M.nmap(bufnr, keys, action)
-    if type(keys) == "string" then
-        keys = { keys }
-    end
-
-    for _, lhs in ipairs(keys) do
-        vim.keymap.set(
-            "n",
-            lhs,
-            action,
-            { silent = true, noremap = true, buffer = bufnr }
-        )
-    end
-end
-
 -- this function is working with M.unescape_keycode to avoid lua bad argument error
-function M.escape_keycode(key)
-    return key:gsub("<", "["):gsub(">", "]")
-end
-
-function M.unescape_keycode(key)
-    return key:gsub("%[", "<"):gsub("%]", ">")
-end
+-- function M.escape_keycode(key)
+--     return key:gsub("<", "["):gsub(">", "]")
+-- end
+--
+-- function M.unescape_keycode(key)
+--     return key:gsub("%[", "<"):gsub("%]", ">")
+-- end
 
 -- convert a function to callback string
 function M.execute_binding(key)
-    key = M.unescape_keycode(key)
+    key = utils_basic.unescape_keycode(key)
     M.State.view_bindings[key]()
 end
 
@@ -87,7 +69,7 @@ function M.setup()
             key,
             string.format(
                 ":lua require('vista-nvim.bindings').execute_binding('%s')<CR>",
-                M.escape_keycode(key)
+                utils_basic.escape_keycode(key)
             ),
             { noremap = true, silent = true, nowait = true }
         )

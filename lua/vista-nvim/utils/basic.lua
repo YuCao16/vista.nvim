@@ -67,4 +67,13 @@ function M.items_dfs(callback, children)
     end
 end
 
+-- this function is working with M.unescape_keycode to avoid lua bad argument error
+function M.escape_keycode(key)
+    return key:gsub("<", "["):gsub(">", "]")
+end
+
+function M.unescape_keycode(key)
+    return key:gsub("%[", "<"):gsub("%]", ">")
+end
+
 return M

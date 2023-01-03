@@ -156,14 +156,15 @@ end
 ---------------
 -- highlight
 ---------------
---TODO: while auto fold, folded items still be toggled
+-- TODO: toggle logic need improvement
 function M._highlight_current_item(winnr)
     local has_provider = providers.has_provider(view.View.provider)
 
     local is_current_buffer_the_outline = view.View.bufnr
         == vim.api.nvim_get_current_buf()
 
-    local doesnt_have_outline_buf = not view.View.bufnr
+    local doesnt_have_outline_buf =
+        not view.is_win_open({ any_tabpage = false })
 
     local should_exit = not has_provider
         or doesnt_have_outline_buf

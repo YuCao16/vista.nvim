@@ -23,11 +23,12 @@ M.filetype_map = {
 }
 M.show_symbol_details = true
 M.auto_unfold_hover = false
-M.autofold_depth = nil
+M.autofold_depth = 2
 M.fold_markers = { "", "" }
 M.symbol_blacklist = {}
-M.lsp_blacklist = {}
--- M.lsp_blacklist = { "pyright" }
+M.lsp_blacklist = { "pyright" }
+-- M.lsp_blacklist = { "jedi_language_server" }
+
 -- A list of all symbols to display. Set to false to display all symbols.
 -- This can be a filetype map (see :help aerial-filetype-map)
 -- To see all available values, see :help SymbolKind
