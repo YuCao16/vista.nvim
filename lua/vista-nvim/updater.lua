@@ -26,11 +26,10 @@ function M.__refresh()
         return
     end
 
-    if config.filetype_map[view.View.current_ft] == nil then
+    if config.filetype_map[view.View.current_ft].provider == nil then
         view.View.provider = config.default_provider -- string
     else
-        view.View.provider = config.filetype_map[view.View.current_ft] --string
-        -- vim.notify("updating filetype_map")
+        view.View.provider = config.filetype_map[view.View.current_ft].provider --string
         handler = handlers.get_handler(
             view.View.provider,
             { refresh = not M.first_call[view.View.provider] }

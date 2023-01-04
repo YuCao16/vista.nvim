@@ -86,7 +86,7 @@ function M.setup()
     M.View.side = config.side or M.View.side
     M.View.width = config.initial_width or M.View.width
     if config.show_title then
-        M.View.title_line = 2
+        M.View.title_line = 1
     end
 
     M.View.bufnr = a.nvim_create_buf(false, false)

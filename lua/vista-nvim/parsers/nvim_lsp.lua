@@ -194,7 +194,7 @@ function M.get_lines(flattened_outline_items)
             if config.show_guides then
                 -- makes the guides
                 if index == 1 then
-                    line[index] = ""
+                    line[index] = " "
                     -- if index is last, add a bottom marker if current item is last,
                     -- else add a middle marker
                 elseif index == #line then

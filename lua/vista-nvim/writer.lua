@@ -4,7 +4,8 @@ local highlight = require("vista-nvim.highlight")
 local view = require("vista-nvim.view")
 
 local M = {}
-M.written_title = false
+
+M.current_filepath = nil
 
 local function is_buffer_vista(bufnr)
     local isValid = vim.api.nvim_buf_is_valid(bufnr)
@@ -24,7 +25,7 @@ function M.add_highlights(bufnr, hl_info, nodes)
             hlns,
             "VistaOutlineTitle",
             0,
-            0,
+            3,
             -1
         )
     end
@@ -78,26 +79,56 @@ function M.clean_path(filepath)
     return filepath
 end
 
+function M.write_title(bufnr)
+    -- TODO: arrange to one statement
+    if not is_buffer_vista(bufnr) then
+        return
+    end
+    if not config.show_title then
+        return
+    end
+    -- if current window is VistaNvim window
+    if view.View.bufnr == vim.api.nvim_get_current_buf() then
+        return
+    end
+    -- if current filepath change
+    if M.current_filepath == view.View.current_filepath then
+        return
+    end
+    if string.match(view.View.current_filepath, ".*VistaNvim_.*") then
+        return
+    end
+    vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+    vim.api.nvim_buf_set_lines(
+        bufnr,
+        0,
+        0,
+        false,
+        {
+            config.fold_markers[2] .. " " .. M.clean_path(
+                view.View.current_filepath
+            ),
+        }
+    )
+    -- vim.api.nvim_buf_set_lines(
+    --     bufnr,
+    --     1,
+    --     1,
+    --     false,
+    --     { config.fold_markers[2] .. " symbols" }
+    -- )
+    vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
+    M.current_filepath = view.View.current_filepath
+end
+
 function M.write_vista(bufnr, lines)
     if not is_buffer_vista(bufnr) then
         return
     end
+
     vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
     if config.show_title then
-        if M.written_title then
-            vim.api.nvim_buf_set_lines(bufnr, 2, -1, false, lines)
-            return
-        end
-        vim.api.nvim_buf_set_lines(
-            bufnr,
-            0,
-            0,
-            false,
-            { M.clean_path(view.View.current_filepath) }
-        )
-        vim.api.nvim_buf_set_lines(bufnr, 1, 1, false, { " " })
-        vim.api.nvim_buf_set_lines(bufnr, 2, -1, false, lines)
-        M.written_title = true
+        vim.api.nvim_buf_set_lines(bufnr, view.View.title_line, -1, false, lines)
     else
         vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
     end
@@ -109,6 +140,7 @@ end
 function M.parse_and_write(bufnr, flattened_outline_items)
     -- vim.api.nvim_echo({ { "vista parse and write", "None" } }, false, {})
     local lines, hl_info = parser.get_lines(flattened_outline_items)
+    M.write_title(bufnr)
     M.write_vista(bufnr, lines)
 
     -- clear_virt_text(bufnr)
