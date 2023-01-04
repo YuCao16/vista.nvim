@@ -22,11 +22,12 @@ function M.__refresh()
     view.View.current_ft = vim.bo.filetype
     view.View.current_filepath = vim.fn.expand("%:p")
     if utils_provider.current_support[view.View.current_ft] == nil then
-        -- vim.notify("nothing to update, vista remain unchange")
         return
     end
 
-    if config.filetype_map[view.View.current_ft].provider == nil then
+    if config.filetype_map[view.View.current_ft] == nil then
+        view.View.provider = config.default_provider -- string
+    elseif config.filetype_map[view.View.current_ft].provider == nil then
         view.View.provider = config.default_provider -- string
     else
         view.View.provider = config.filetype_map[view.View.current_ft].provider --string

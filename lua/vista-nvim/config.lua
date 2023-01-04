@@ -19,7 +19,6 @@ M.filetype_map = {
     lua = { provider = "lsp", symbol_blacklist = {} },
     cpp = { provider = "lsp", symbol_blacklist = {} },
     c = { provider = "lsp", symbol_blacklist = {} },
-    ruby = { provider = "lsp", symbol_blacklist = {} },
     markdown = { provider = "lsp", symbol_blacklist = {} },
 }
 M.show_symbol_details = true
@@ -84,11 +83,15 @@ function M.is_symbol_blacklisted(kind)
     return has_value(M.symbol_blacklist, kind)
 end
 
-function M.is_client_blacklisted(client_id)
+function M.is_client_blacklisted_id(client_id)
     local client = vim.lsp.get_client_by_id(client_id)
     if not client then
         return false
     end
     return has_value(M.lsp_blacklist, client.name)
+end
+
+function M.is_client_blacklisted_name(client_name)
+    return has_value(M.lsp_blacklist, client_name)
 end
 return M

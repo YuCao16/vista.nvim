@@ -7,6 +7,7 @@ local M = {}
 
 M.View = {
     bufnr = nil,
+    win_height = 10,
     tabpages = {}, -- record tabpage with vista.nvim
     provider = nil,
     width = 30,
@@ -221,6 +222,7 @@ function M.open(options)
     a.nvim_command("wincmd " .. move_to)
     a.nvim_command("vertical resize " .. get_defined_width())
     local winnr = a.nvim_get_current_win()
+    M.View.win_height = a.nvim_win_get_height(winnr)
     local tabpage = a.nvim_get_current_tabpage()
     M.View.tabpages[tabpage] = vim.tbl_extend(
         "force",

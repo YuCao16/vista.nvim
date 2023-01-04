@@ -22,6 +22,7 @@ local function setup_global_autocmd()
         "BufWinEnter",
         "TabEnter",
         "BufWritePost",
+        "LspAttach",
     }, {
         pattern = "*",
         callback = updater._refresh,

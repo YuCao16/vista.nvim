@@ -133,7 +133,7 @@ function M.parse(response)
         if got_result then
             goto continue
         end
-        if config.is_client_blacklisted(client_id) then
+        if config.is_client_blacklisted_id(client_id) then
             print("skipping client " .. client_id)
             goto continue
         end

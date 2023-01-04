@@ -1,3 +1,5 @@
+local writer = require("vista-nvim.writer")
+local view = require("vista-nvim.view")
 local M = {}
 
 local providers = {
@@ -35,6 +37,8 @@ function M.request_symbols(on_symbols, _provider)
             _G._symbols_outline_current_provider = provider
             provider.request_symbols(on_symbols)
             return
+        else
+            writer.write_title_loading(view.View.bufnr)
         end
     end
     for _, value in ipairs(providers) do

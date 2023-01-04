@@ -8,8 +8,8 @@
 
 - [ ] Move general way to setting key bindings
 
-- [ ] Make first line foldable
-
-- [ ] Implement a loading page
+- [x] Implement a loading page
 
 - [ ] More layout option
+
+- [ ] Make first line foldable (Optional)

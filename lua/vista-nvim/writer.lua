@@ -79,6 +79,34 @@ function M.clean_path(filepath)
     return filepath
 end
 
+function M.write_middle()
+    local ret = {}
+    local win_height_half = 10
+    if type(view.View.win_height) == "number" then
+        win_height_half = math.floor(view.View.win_height / 2) - 3
+    end
+    for i=1,win_height_half do
+        table.insert(ret, "")
+    end
+    table.insert(ret, "          No symbols")
+    table.insert(ret, "      lsp (not supported) ")
+    table.insert(ret, "     [No LSP client found]")
+    return ret
+end
+
+local hlld = vim.api.nvim_create_namespace("vista-nvim-loading")
+function M.write_title_loading(bufnr)
+    vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+    vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, {
+        config.fold_markers[2] .. " " .. M.clean_path(
+            view.View.current_filepath
+        ),
+    })
+    vim.api.nvim_buf_set_lines(bufnr, 1, -1, false, M.write_middle())
+    vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
+    vim.api.nvim_buf_add_highlight(bufnr, hlld, "@method", 0, 3, -1)
+end
+
 function M.write_title(bufnr)
     -- TODO: arrange to one statement
     if not is_buffer_vista(bufnr) then
@@ -99,24 +127,11 @@ function M.write_title(bufnr)
         return
     end
     vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
-    vim.api.nvim_buf_set_lines(
-        bufnr,
-        0,
-        0,
-        false,
-        {
-            config.fold_markers[2] .. " " .. M.clean_path(
-                view.View.current_filepath
-            ),
-        }
-    )
-    -- vim.api.nvim_buf_set_lines(
-    --     bufnr,
-    --     1,
-    --     1,
-    --     false,
-    --     { config.fold_markers[2] .. " symbols" }
-    -- )
+    vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, {
+        config.fold_markers[2] .. " " .. M.clean_path(
+            view.View.current_filepath
+        ),
+    })
     vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
     M.current_filepath = view.View.current_filepath
 end
@@ -128,7 +143,13 @@ function M.write_vista(bufnr, lines)
 
     vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
     if config.show_title then
-        vim.api.nvim_buf_set_lines(bufnr, view.View.title_line, -1, false, lines)
+        vim.api.nvim_buf_set_lines(
+            bufnr,
+            view.View.title_line,
+            -1,
+            false,
+            lines
+        )
     else
         vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
     end

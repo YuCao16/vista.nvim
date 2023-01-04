@@ -6,6 +6,7 @@ M.current_support = {
     lua = "lua",
     markdown = "markdown",
     cpp = "cpp",
+    julia = "julia",
 }
 
 return M

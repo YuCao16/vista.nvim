@@ -11,7 +11,7 @@ function M.hover_info(bufnr, params, on_info)
     local used_client
 
     for id, client in pairs(clients) do
-        if config.is_client_blacklisted(id) then
+        if config.is_client_blacklisted_id(id) then
             goto continue
         else
             if client.server_capabilities.hoverProvider then
@@ -40,7 +40,7 @@ function M.should_use_provider(bufnr)
     local ret = false
 
     for id, client in pairs(clients) do
-        if config.is_client_blacklisted(id) then
+        if config.is_client_blacklisted_name(client.name) then
             goto continue
         else
             if client.server_capabilities.documentSymbolProvider then
