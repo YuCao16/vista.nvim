@@ -20,8 +20,15 @@ local function is_buffer_vista(bufnr)
         and isValid
 end
 
-local hlns = vim.api.nvim_create_namespace("vista-icon-highlight")
+local function max_title_width()
+    local max_width = string.len(M.current_filepath) + 6
+    if M.current_width > max_width then
+        return max_width - 1
+    end
+    return M.current_width
+end
 
+local hlns = vim.api.nvim_create_namespace("vista-icon-highlight")
 function M.add_highlighs_title(bufnr, theme)
     vim.api.nvim_buf_add_highlight(bufnr, hlns, "VistaOutlineTitle", 0, 3, -2)
     if theme == "tree" then
@@ -30,7 +37,7 @@ function M.add_highlighs_title(bufnr, theme)
             hlns,
             "@string",
             0,
-            M.current_width,
+            max_title_width(),
             -1
         )
     elseif theme == "type" then
@@ -39,7 +46,7 @@ function M.add_highlighs_title(bufnr, theme)
             hlns,
             "@type",
             0,
-            M.current_width,
+            max_title_width(),
             -1
         )
     end
@@ -57,7 +64,7 @@ function M.add_highlights(bufnr, hl_info, nodes, theme)
             hlns,
             "@string",
             0,
-            M.current_width,
+            max_title_width(),
             -1
         )
         for _, line_hl in ipairs(hl_info) do
@@ -200,7 +207,7 @@ function M.write_title_width(bufnr)
     vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
     vim.api.nvim_buf_set_lines(bufnr, 0, 1, false, {
         config.fold_markers[2] .. " " .. M.clean_path(
-            view.View.current_filepath,
+            M.current_filepath,
             M.current_width
         ) .. " " .. theme_marker,
     })

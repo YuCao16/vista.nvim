@@ -22,6 +22,11 @@ M.State = {
         ["q"] = function()
             require("vista-nvim").close()
         end,
+        ["Q"] = function()
+            require("vista-nvim").destroy()
+        end,
+        -- ["<leader>w"] = function() end,
+        -- ["<c-w>"] = function() end,
     },
 }
 

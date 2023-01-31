@@ -89,7 +89,10 @@ end
 
 function M.close()
     view.close()
-    -- vim.api.nvim_echo({ { "vista close", "None" } }, false, {})
+end
+
+function M.destroy()
+    view.destroy()
 end
 
 function M.toggle()

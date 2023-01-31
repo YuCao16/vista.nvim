@@ -58,6 +58,8 @@ end
 function M.__refresh_title()
     if view.get_width(vim.api.nvim_get_current_tabpage()) == config.width then
         return
+    elseif not view.is_win_open() then
+        return
     else
         writer.write_title_width(view.View.bufnr)
     end
