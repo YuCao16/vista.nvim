@@ -13,3 +13,5 @@
 - [ ] More layout option
 
 - [ ] Make first line foldable (Optional)
+
+- [x] Title change while width change
