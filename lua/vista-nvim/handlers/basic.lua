@@ -32,6 +32,9 @@ M.handler_bindings = {
     ["zR"] = function()
         require("vista-nvim.handlers.basic").set_all_folded(false)
     end,
+    ["s"] = function()
+        require("vista-nvim.handlers.basic")._switch_theme()
+    end,
 }
 
 -- convert a function to callback string
@@ -138,6 +141,20 @@ function M.goto_location(change_focus)
         M.close_outline()
     end
     utils_basic.flash_highlight(M.state.current_bufnr, node.line + 1)
+end
+
+---------------
+-- switch theme
+---------------
+function M._switch_theme()
+    local current_theme = writer.structure_theme
+    if current_theme == "tree" then
+        writer.structure_theme = "type"
+    elseif current_theme == "type" then
+        writer.structure_theme = "tree"
+    end
+
+    M._update_lines()
 end
 
 ---------------

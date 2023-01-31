@@ -13,6 +13,7 @@ M.auto_preview = false
 M.disable_max_lines = 10000
 M.disable_max_sizes = 2000000 -- Default 2MB
 M.default_provider = "lsp"
+M.theme = "tree" -- tree or type
 M.filetype_map = {
     python = { provider = "lsp", symbol_blacklist = {} },
     rust = { provider = "lsp", symbol_blacklist = {} },
@@ -25,6 +26,7 @@ M.show_symbol_details = true
 M.auto_unfold_hover = false
 M.autofold_depth = 2
 M.fold_markers = { "", "" }
+M.theme_markers = { "🆃 ", "🅲 " }
 M.symbol_blacklist = {}
 -- M.lsp_blacklist = { "pyright" }
 M.lsp_blacklist = { "jedi_language_server", "null-ls" }
@@ -99,4 +101,13 @@ end
 function M.is_client_blacklisted_name(client_name)
     return has_value(M.lsp_blacklist, client_name)
 end
+
+function M.get_theme_icon(theme)
+    if theme == "type" then
+        return M.theme_markers[2]
+    else
+        return M.theme_markers[1]
+    end
+end
+
 return M

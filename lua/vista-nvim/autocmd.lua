@@ -17,8 +17,6 @@ local function setup_global_autocmd()
 
     vim.api.nvim_create_autocmd({
         "InsertLeave",
-        -- "WinEnter",
-        -- "BufEnter",
         "BufWinEnter",
         "TabEnter",
         "BufWritePost",
@@ -26,6 +24,13 @@ local function setup_global_autocmd()
     }, {
         pattern = "*",
         callback = updater._refresh,
+    })
+
+    vim.api.nvim_create_autocmd({
+        "WinResized",
+    }, {
+        pattern = "*",
+        callback = updater._refresh_title,
     })
 
     vim.api.nvim_create_autocmd("WinEnter", {

@@ -4,6 +4,7 @@ local providers = require("vista-nvim.providers.init")
 local handlers = require("vista-nvim.handlers.init")
 local view = require("vista-nvim.view")
 local config = require("vista-nvim.config")
+local writer = require("vista-nvim.writer")
 
 local a = vim.api
 
@@ -54,7 +55,16 @@ function M.__refresh()
     -- vim.notify("updating default_provider")
 end
 
+function M.__refresh_title()
+    if view.get_width(vim.api.nvim_get_current_tabpage()) == config.width then
+        return
+    else
+        writer.write_title_width(view.View.bufnr)
+    end
+end
+
 --TODO: check out why dealy < 300 cause nil response while first calling
 M._refresh = utils_basic.debounce(M.__refresh, 300)
+M._refresh_title = utils_basic.debounce(M.__refresh_title, 300)
 
 return M

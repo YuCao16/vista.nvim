@@ -169,7 +169,22 @@ function M.flatten(outline_items, ret, depth)
     return ret
 end
 
-function M.get_lines(flattened_outline_items)
+function M.get_lines(flattened_outline_items, theme)
+    if theme == "type" then
+        return M.get_lines_type(flattened_outline_items)
+    else
+        return M.get_lines_tree(flattened_outline_items)
+    end
+end
+
+function M.get_lines_type(flattened_outline_items)
+    local lines = {}
+    local hl_info = {}
+
+    return lines, hl_info
+end
+
+function M.get_lines_tree(flattened_outline_items)
     local lines = {}
     local hl_info = {}
 

@@ -7,6 +7,8 @@ M.current_support = {
     markdown = "markdown",
     cpp = "cpp",
     julia = "julia",
+    cuda = "cuda",
+    yaml = "yaml",
 }
 
 return M
