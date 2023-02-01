@@ -1,3 +1,4 @@
+vim.cmd([[
 if !has('nvim-0.5') || exists('g:loaded_vista_nvim') | finish | endif
 
 let s:save_cpo = &cpo
@@ -21,3 +22,16 @@ let &cpo = s:save_cpo
 unlet s:save_cpo
 
 let g:loaded_vista_nvim = 1
+]])
+vim.api.nvim_create_user_command('VistaNvim', function(args)
+  require('vista-nvim.commands').load_command(unpack(args.fargs))
+end, {
+  range = true,
+  nargs = '+',
+  complete = function(arg)
+    local list = require('vista-nvim.commands').command_list()
+    return vim.tbl_filter(function(s)
+      return string.match(s, '^' .. arg)
+    end, list)
+  end,
+})

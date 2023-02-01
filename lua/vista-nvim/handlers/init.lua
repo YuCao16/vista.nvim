@@ -21,4 +21,11 @@ function M.get_handler(provider, opt)
     end
 end
 
+function M.update(provider)
+    if handlers[provider] ~= nil then
+        local handler = require(handlers[provider])
+        handler._update_lines(true)
+    end
+end
+
 return M

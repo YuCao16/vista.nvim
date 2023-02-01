@@ -71,12 +71,15 @@ local function wipe_state()
     }
 end
 
-function M._update_lines()
-    if #vim.lsp.get_active_clients({bufnr = 0}) ~= 0 then
+function M._update_lines(ext)
+    ext = false or ext
+    if #vim.lsp.get_active_clients({ bufnr = 0 }) ~= 0 then
         if M.lsp_filepath ~= vim.api.nvim_buf_get_name(0) then
             M.lsp_filepath = vim.api.nvim_buf_get_name(0)
         else
-            return
+            if not ext then
+                return
+            end
         end
     end
     M.state.flattened_outline_items = lsp_parser.flatten(M.state.outline_items)
