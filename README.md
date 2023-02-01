@@ -6,6 +6,8 @@
 
 - [x] Title change while width change
 
+- [ ] Quit all Vista window within current tabpage
+
 - [ ] Predefinable fold class for 'nvim.lsp' type layout
 
 - [ ] Memorable fold
