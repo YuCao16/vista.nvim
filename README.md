@@ -2,16 +2,18 @@
 
 ## TODO
 
+- [x] Implement a loading page
+
+- [x] Title change while width change
+
+- [ ] Predefinable fold class for 'nvim.lsp' type layout
+
+- [ ] Memorable fold
+
 - [ ] Implement universal-ctags, with source switch
 
 - [ ] Implement treesitter, with source switch
 
 - [ ] Move general way to setting key bindings
 
-- [x] Implement a loading page
-
-- [ ] More layout option
-
 - [ ] Make first line foldable (Optional)
-
-- [x] Title change while width change
