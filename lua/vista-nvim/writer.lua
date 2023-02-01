@@ -9,6 +9,7 @@ M.current_filepath = nil
 M.structure_theme = config.theme
 M.current_theme = config.theme
 M.current_width = config.width
+M.lsp_bufnr = nil
 
 local function is_buffer_vista(bufnr)
     local isValid = vim.api.nvim_buf_is_valid(bufnr)
@@ -21,6 +22,9 @@ local function is_buffer_vista(bufnr)
 end
 
 local function max_title_width()
+    if M.current_filepath == nil then
+        return config.width
+    end
     local max_width = string.len(M.current_filepath) + 6
     if M.current_width > max_width then
         return max_width - 1
@@ -52,36 +56,41 @@ function M.add_highlighs_title(bufnr, theme)
     end
 end
 
-function M.add_highlights(bufnr, hl_info, nodes, theme)
+function M.add_highlights(bufnr, hl_info, nodes)
     if config.show_title then
-        M.add_highlighs_title(bufnr, theme)
+        M.add_highlighs_title(bufnr, M.structure_theme)
     end
-    if theme == "type" then
+    if M.structure_theme == "type" then
+        for k, v in pairs(hl_info) do
+            if not vim.tbl_isempty(v) then
+                for group, scope in pairs(v) do
+                    vim.api.nvim_buf_add_highlight(
+                        bufnr,
+                        0,
+                        group,
+                        k,
+                        scope[1],
+                        scope[2]
+                    )
+                end
+            end
+        end
         return
-    elseif theme == "tree" then
+    end
+    for _, line_hl in ipairs(hl_info) do
+        local line, hl_start, hl_end, hl_type = unpack(line_hl)
         vim.api.nvim_buf_add_highlight(
             bufnr,
             hlns,
-            "@string",
-            0,
-            max_title_width(),
-            -1
+            hl_type,
+            line - 1 + view.View.title_line,
+            hl_start,
+            hl_end
         )
-        for _, line_hl in ipairs(hl_info) do
-            local line, hl_start, hl_end, hl_type = unpack(line_hl)
-            vim.api.nvim_buf_add_highlight(
-                bufnr,
-                hlns,
-                hl_type,
-                line - 1 + view.View.title_line,
-                hl_start,
-                hl_end
-            )
-        end
-
-        -- TODO: add hover highlight
-        M.add_hover_highlights(bufnr, nodes)
     end
+
+    -- TODO: add hover highlight
+    M.add_hover_highlights(bufnr, nodes)
 end
 
 M.add_hover_highlights = function(bufnr, nodes)
@@ -164,6 +173,9 @@ function M._should_update_title(bufnr)
     if string.match(view.View.current_filepath, ".*VistaNvim_.*") then
         return false
     end
+    if #vim.lsp.get_active_clients({ bufnr = current_buf }) == 0 then
+        return false
+    end
     return true
 end
 
@@ -180,7 +192,6 @@ function M.write_title(bufnr, switch, width)
             .nvim_buf_get_lines(view.View.bufnr, 0, 1, false)[1]
             :sub(1, -6) .. theme_marker
 
-        -- vim.notify(vim.api.nvim_buf_get_lines(view.View.bufnr, 0, 1, false)[1]:sub(1, -5))
         vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, {
             current_title,
         })
@@ -189,16 +200,23 @@ function M.write_title(bufnr, switch, width)
         return
     end
     local theme_marker = config.get_theme_icon(M.structure_theme)
+    local current_filepath = vim.api.nvim_buf_get_name(0)
     M.current_width = view.get_width(vim.api.nvim_get_current_tabpage())
     vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
     vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, {
-        config.fold_markers[2] .. " " .. M.clean_path(
-            view.View.current_filepath,
-            M.current_width
-        ) .. " " .. theme_marker,
+        config.fold_markers[2]
+            .. " "
+            .. M.clean_path(
+                -- view.View.current_filepath,
+                current_filepath,
+                M.current_width
+            )
+            .. " "
+            .. theme_marker,
     })
     vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
-    M.current_filepath = view.View.current_filepath
+    -- M.current_filepath = view.View.current_filepath
+    M.current_filepath = current_filepath
 end
 
 function M.write_title_width(bufnr)
@@ -237,9 +255,14 @@ end
 
 -- runs the whole writing routine where the text is cleared, new data is parsed
 -- and then written
-function M.parse_and_write(bufnr, flattened_outline_items)
+M.test_writer = {}
+function M.parse_and_write(bufnr, outline_items, theme)
+    M.test_writer = outline_items
     local lines, hl_info =
-        parser.get_lines(flattened_outline_items, M.structure_theme)
+        parser.get_lines(outline_items, M.structure_theme)
+    if lines[1] == nil then
+        return
+    end
     if M.current_theme ~= M.structure_theme then
         M.write_title(bufnr, true)
         M.current_theme = M.structure_theme
@@ -247,11 +270,7 @@ function M.parse_and_write(bufnr, flattened_outline_items)
         M.write_title(bufnr, false)
     end
     M.write_vista(bufnr, lines)
-
-    -- clear_virt_text(bufnr)
-    -- local details = parser.get_details(flattened_outline_items)
-    M.add_highlights(bufnr, hl_info, flattened_outline_items, M.structure_theme)
-    -- M.write_details(bufnr, details)
+    M.add_highlights(bufnr, hl_info, outline_items)
 end
 
 return M

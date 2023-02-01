@@ -1,8 +1,20 @@
+local kind = require("vista-nvim.render").kinds_number
 local M = {}
 
 -- link group1 to group2
 local function link(group1, group2)
     vim.api.nvim_set_hl(0, group1, { link = group2, default = true })
+end
+
+local function update_hl(group, tbl)
+    local old_hl = vim.api.nvim_get_hl_by_name(group, true)
+    local new_hl = vim.tbl_extend("force", { bg = old_hl.background }, tbl)
+    local new_hl = vim.tbl_extend(
+        "force",
+        { bg = old_hl.background, fg = old_hl.foreground },
+        tbl
+    )
+    vim.api.nvim_set_hl(0, group, new_hl)
 end
 
 local function create(group_name, bg, fg, bold, ctermfg, ctermbg)
@@ -16,7 +28,7 @@ local function create(group_name, bg, fg, bold, ctermfg, ctermbg)
         bg = bg,
         ctermfg = ctermfg,
         ctermbg = ctermbg,
-        bold = bold
+        bold = bold,
     })
 end
 
@@ -46,9 +58,25 @@ function M.add_hover_highlight(bufnr, line, col_start)
     )
 end
 
+function M.gen_outline_hi()
+    for _, v in pairs(kind) do
+        local hi_name = "VistaOutline" .. v[1]
+        local ok, tbl = pcall(vim.api.nvim_get_hl_by_name, hi_name, true)
+        if not ok or not tbl.foreground then
+            if string.find(v[3], "@") then
+                link(hi_name, v[3])
+                update_hl(hi_name, { bold = true })
+            else
+                vim.api.nvim_set_hl(0, hi_name, { fg = v[3] })
+            end
+        end
+    end
+end
+
 function M.setup()
     -- Setup the FocusedSymbol highlight group if it hasn't been done already by
     -- a theme or manually set
+    M.gen_outline_hi()
     if vim.fn.hlexists("FocusedSymbol") == 0 then
         local cline_hl = vim.api.nvim_get_hl_by_name("CursorLine", true)
         local string_hl = vim.api.nvim_get_hl_by_name("String", true)
@@ -61,6 +89,7 @@ function M.setup()
     end
 
     -- Create some highlight
+    create("VistaIndent", nil, "#a0a8b7", nil, nil, nil)
     create("VistaConnector", nil, "#a0a8b7", nil, nil, nil)
     create("VistaOutlineTitle", nil, "#4fa6ed", true, nil)
     create("VistaFocusedSymbol", M.get_highlight_bg_fg("FocusedSymbol"))

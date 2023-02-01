@@ -8,6 +8,7 @@ local render = require("vista-nvim.render")
 local writer = require("vista-nvim.writer")
 local utils_basic = require("vista-nvim.utils.basic")
 local highlight = require("vista-nvim.highlight")
+-- local config = require("vista-nvim.config")
 -- local lib = require("vista-nvim.lib")
 -- local colors = require("vista-nvim.colors")
 
@@ -17,6 +18,8 @@ local M = { setup_called = false, _internal_setup_called = false }
 M.data = {
     outline_items = {},
     flattened_outline_items = {},
+    type_items = {},
+    classified_outline_items = {},
     code_win = 0,
     current_bufnr = nil,
 }

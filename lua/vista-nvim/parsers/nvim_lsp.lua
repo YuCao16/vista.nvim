@@ -2,6 +2,7 @@ local render = require("vista-nvim.render")
 local config = require("vista-nvim.config")
 local utils_table = require("vista-nvim.utils.table")
 local folding = require("vista-nvim.folding")
+local kind = require("vista-nvim.render").kinds_number
 
 local M = {}
 
@@ -117,7 +118,9 @@ local function sort_result(result)
 
     return result
 end
-
+M.response = {}
+M.response_result = {}
+M.all_result = {}
 ---Parses the response from lsp request 'textDocument/documentSymbol' using buf_request_all
 ---@param response table The result from buf_request_all
 ---@return table outline items
@@ -142,6 +145,8 @@ function M.parse(response)
         if result == nil or type(result) ~= "table" then
             goto continue
         end
+        M.response = client_response
+        M.response_result = result
 
         for _, value in pairs(result) do
             table.insert(all_results, value)
@@ -154,6 +159,112 @@ function M.parse(response)
     local sorted = sort_result(all_results)
 
     return parse_result(sorted, nil, nil)
+end
+
+function M.parse_type(response)
+    local all_results = {}
+
+    local got_result = false
+    for client_id, client_response in pairs(response) do
+        if got_result then
+            goto continue
+        end
+        if config.is_client_blacklisted_id(client_id) then
+            print("skipping client " .. client_id)
+            goto continue
+        end
+
+        local result = client_response["result"]
+        if result == nil or type(result) ~= "table" then
+            goto continue
+        end
+        M.response = client_response
+        M.response_result = result
+
+        for _, value in pairs(result) do
+            table.insert(all_results, value)
+        end
+        got_result = true
+
+        ::continue::
+    end
+
+    M.all_result = all_results
+    return all_results
+end
+
+function M.node_is_keyword(buf, node)
+	if not node.selectionRange then
+		return false
+	end
+	local captures =
+		vim.treesitter.get_captures_at_pos(buf, node.selectionRange.start.line, node.selectionRange.start.character)
+	for _, v in pairs(captures) do
+		if v.capture == "keyword" or v.capture == "conditional" or v.capture == "repeat" then
+			return true
+		end
+	end
+	return false
+end
+
+function M.classify(result)
+    local res = {}
+
+    local tmp_node = function(node)
+        local tmp = {}
+        tmp.winline = -1
+        for k, v in pairs(node) do
+            if k ~= "children" then
+                tmp[k] = v
+            end
+        end
+        return tmp
+    end
+
+    local function recursive_parse(tbl)
+        for _, v in pairs(tbl) do
+            if not res[v.kind] then
+                res[v.kind] = {
+                    expand = true,
+                    data = {},
+                }
+            end
+            if not M.node_is_keyword(0, v) then
+                local tmp = tmp_node(v)
+                table.insert(res[v.kind].data, tmp)
+            end
+
+            if v.children then
+                recursive_parse(v.children)
+            end
+        end
+    end
+    recursive_parse(result)
+    local keys = vim.tbl_keys(res)
+    table.sort(keys, nil)
+    local new = {}
+    for _, v in pairs(keys) do
+        new[v] = res[v]
+    end
+
+    -- remove unnecessary data reduce memory usage
+    for k, v in pairs(new) do
+        if #v.data == 0 then
+            new[k] = nil
+        else
+            for _, item in pairs(v.data) do
+                if item.selectionRange then
+                    item.pos = {
+                        item.selectionRange.start.line,
+                        item.selectionRange.start.character,
+                    }
+                    item.selectionRange = nil
+                end
+            end
+        end
+    end
+
+    return new
 end
 
 function M.flatten(outline_items, ret, depth)
@@ -169,20 +280,42 @@ function M.flatten(outline_items, ret, depth)
     return ret
 end
 
-function M.get_lines(flattened_outline_items, theme)
+function M.get_lines(outline_items, theme)
     if theme == "type" then
-        return M.get_lines_type(flattened_outline_items)
+        return M.get_lines_type(outline_items)
     else
-        return M.get_lines_tree(flattened_outline_items)
+        return M.get_lines_tree(outline_items)
     end
 end
 
-function M.get_lines_type(flattened_outline_items)
+function M.get_lines_type(classified_outline_items)
     local lines = {}
-    local hl_info = {}
-
-    return lines, hl_info
+    local hi = {}
+    for k, v in pairs(classified_outline_items) do
+        local scope = {}
+        local indent_with_icon = "  " .. ""
+        table.insert(lines, indent_with_icon .. " " .. kind[k][1])
+        scope["VistaConnector"] = { 0, #indent_with_icon }
+        scope["VistaOutline" .. kind[k][1]] = { #indent_with_icon, -1 }
+        table.insert(hi, scope)
+        v.winline = #lines
+        for j, node in pairs(v.data) do
+            node.hi_scope = {}
+            local indent = j == #v.data and "  └" .. " " or "  │" .. " "
+            node.name = indent .. kind[node.kind][2] .. node.name
+            table.insert(lines, node.name)
+            node.hi_scope["VistaIndent"] = { 0, #indent }
+            node.hi_scope["VistaOutline" .. kind[node.kind][1]] =
+                { #indent, #indent + #kind[node.kind][2] }
+            table.insert(hi, node.hi_scope)
+            node.winline = #lines
+        end
+        table.insert(lines, "")
+        table.insert(hi, {})
+    end
+    return lines, hi
 end
+
 
 function M.get_lines_tree(flattened_outline_items)
     local lines = {}

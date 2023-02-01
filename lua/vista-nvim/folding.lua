@@ -2,9 +2,16 @@ local config = require("vista-nvim.config")
 
 local M = {}
 
-M.is_foldable = function(node)
+M.is_foldable = function(node, theme)
     if node == nil then
         return false
+    end
+    if theme == "type" then
+        if node.expand then
+            return true
+        else
+            return false
+        end
     end
     return node.children and #node.children > 0
 end

@@ -13,7 +13,7 @@ M.auto_preview = false
 M.disable_max_lines = 10000
 M.disable_max_sizes = 2000000 -- Default 2MB
 M.default_provider = "lsp"
-M.theme = "tree" -- tree or type
+M.theme = "type" -- tree or type
 M.filetype_map = {
     python = { provider = "lsp", symbol_blacklist = {} },
     rust = { provider = "lsp", symbol_blacklist = {} },
@@ -40,7 +40,7 @@ M.symbols = {
     Module = { icon = "", hl = "@Namespace" },
     Namespace = { icon = "", hl = "@Namespace" },
     Package = { icon = "", hl = "@Namespace" },
-    Class = { icon = "", hl = "@Type" },
+    Class = { icon = "", hl = "@Class" },
     Method = { icon = "", hl = "@Method" },
     Property = { icon = "", hl = "@Method" },
     Field = { icon = "", hl = "@Field" },

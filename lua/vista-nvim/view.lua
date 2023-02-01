@@ -14,7 +14,9 @@ M.View = {
     side = "left",
     current_ft = nil,
     current_filepath = nil,
+    lsp_bufnr = nil,
     title_line = 0,
+    theme = config.theme,
     winopts = {
         relativenumber = false,
         number = false,
@@ -233,7 +235,7 @@ function M.open(options)
     for k, v in pairs(M.View.winopts) do
         set_local(k, v)
     end
-    vim.cmd(":wincmd =")
+    -- vim.cmd(":wincmd =")
     if not options.focus then
         vim.cmd("wincmd p")
     end
