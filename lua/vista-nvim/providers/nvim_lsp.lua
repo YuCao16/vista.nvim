@@ -2,7 +2,8 @@ local config = require("vista-nvim.config")
 
 local M = {}
 
-local function getParams()
+local function getParams(bufnr)
+    bufnr = bufnr or 0
     return { textDocument = vim.lsp.util.make_text_document_params() }
 end
 
@@ -55,11 +56,12 @@ function M.should_use_provider(bufnr)
 end
 
 ---@param on_symbols function
-function M.request_symbols(on_symbols)
+function M.request_symbols(on_symbols, bufnr)
+    bufnr = bufnr or 0
     vim.lsp.buf_request_all(
-        0,
+        bufnr,
         "textDocument/documentSymbol",
-        getParams(),
+        getParams(bufnr),
         on_symbols
     )
 end

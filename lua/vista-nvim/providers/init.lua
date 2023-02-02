@@ -30,12 +30,13 @@ function M.has_provider(_provider)
 end
 
 ---@param on_symbols function
-function M.request_symbols(on_symbols, _provider)
+function M.request_symbols(on_symbols, _provider, bufnr)
+    bufnr = bufnr or 0
     if _provider ~= nil then
         provider = require(providers[_provider])
-        if provider.should_use_provider(0) then
+        if provider.should_use_provider(bufnr) then
             _G._symbols_outline_current_provider = provider
-            provider.request_symbols(on_symbols)
+            provider.request_symbols(on_symbols, bufnr)
             return
         else
             writer.write_title_loading(view.View.bufnr)
@@ -43,7 +44,7 @@ function M.request_symbols(on_symbols, _provider)
     end
     for _, value in ipairs(providers) do
         local provider = require(value)
-        if provider.should_use_provider(0) then
+        if provider.should_use_provider(bufnr) then
             _G._symbols_outline_current_provider = provider
             provider.request_symbols(on_symbols)
             return
