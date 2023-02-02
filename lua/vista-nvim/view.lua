@@ -15,8 +15,9 @@ M.View = {
     current_ft = nil,
     current_filepath = nil,
     lsp_bufnr = nil,
+    lsp_ft = nil,
     title_line = 0,
-    theme = config.theme,
+    theme = nil,
     winopts = {
         relativenumber = false,
         number = false,
@@ -88,6 +89,7 @@ end
 function M.setup()
     M.View.side = config.side or M.View.side
     M.View.width = config.initial_width or M.View.width
+    M.View.theme = config.theme
     if config.show_title then
         M.View.title_line = 1
     end
@@ -213,6 +215,10 @@ local function set_local(opt, value)
 end
 
 function M.open(options)
+    -- if #vim.lsp.get_active_clients({ bufnr = 0 }) ~= 0 then
+    --     M.View.lsp_bufnr = vim.fn.bufnr()
+    --     M.View.lsp_ft = vim.bo.filetype
+    -- end
     options = options or { focus = false }
     if not is_buf_valid() then
         M.setup()

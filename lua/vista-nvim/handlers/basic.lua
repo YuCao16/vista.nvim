@@ -180,7 +180,6 @@ function M.goto_location(change_focus)
         M.goto_location_tree()
     elseif M.current_theme == "type" then
         res = M.goto_location_type()
-        -- M.goto_location_type()
     end
     if config.auto_close then
         M.close_outline()
@@ -431,7 +430,10 @@ end
 -- around current/previous function
 -- By change the end of item be the start of next item.
 function M._highlight_current_item(winnr)
-    if M.current_theme == "type" then
+    if writer.current_theme == "type" then
+        if vim.fn.bufnr() ~= view.View.bufnr then
+            vim.api.nvim_win_set_cursor(view.get_winnr(), {1, 1})
+        end
         return
     end
 
@@ -485,7 +487,7 @@ function M._highlight_current_item(winnr)
 
     utils_basic.items_dfs(cb, M.state.outline_items)
 
-    M._update_lines()
+    M._update_lines(true)
 
     if leaf_node then
         for index, node in ipairs(M.state.flattened_outline_items) do

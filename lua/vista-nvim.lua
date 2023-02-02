@@ -8,7 +8,7 @@ local render = require("vista-nvim.render")
 local writer = require("vista-nvim.writer")
 local utils_basic = require("vista-nvim.utils.basic")
 local highlight = require("vista-nvim.highlight")
--- local config = require("vista-nvim.config")
+local config = require("vista-nvim.config")
 -- local lib = require("vista-nvim.lib")
 -- local colors = require("vista-nvim.colors")
 
@@ -71,9 +71,7 @@ function M._internal_setup()
     view.setup()
     bindings.setup()
     autocmd.setup()
-
-    -- lib.setup()
-    -- colors.setup()
+    writer.setup()
 
     if M.open_on_start then
         M._internal_open()
@@ -98,7 +96,17 @@ function M.destroy()
     view.destroy()
 end
 
-function M.toggle()
+function M.focus()
+    if not view.is_win_open() then
+        M.toggle()
+        if view.View.bufnr == nil then
+            return
+        end
+    end
+    vim.fn.win_gotoid(view.get_winnr())
+end
+
+function M.toggle(opt)
     if not M._internal_setup_called and vim.v.vim_did_enter == 1 then
         M._internal_setup()
         M._internal_setup_called = true
@@ -106,9 +114,9 @@ function M.toggle()
     if view.is_win_open({ any_tabpage = false }) then
         view.close()
     else
-        view.open()
+        view.open(opt)
     end
-    vim.api.nvim_echo({ { "vista toggle", "None" } }, false, {})
+    -- vim.api.nvim_echo({ { "vista toggle", "None" } }, false, {})
 end
 
 function M.on_win_leave()

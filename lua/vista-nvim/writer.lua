@@ -6,10 +6,13 @@ local view = require("vista-nvim.view")
 local M = {}
 
 M.current_filepath = nil
-M.structure_theme = config.theme
-M.current_theme = config.theme
 M.current_width = config.width
 M.lsp_bufnr = nil
+
+function M.setup()
+    M.current_theme = config.theme
+    M.structure_theme = config.theme
+end
 
 local function is_buffer_vista(bufnr)
     local isValid = vim.api.nvim_buf_is_valid(bufnr)
@@ -196,7 +199,7 @@ function M.write_title(bufnr, switch, width)
             current_title,
         })
         vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
-        vim.cmd("normal k")
+        vim.cmd("normal! k")
         return
     end
     local theme_marker = config.get_theme_icon(M.structure_theme)
