@@ -110,6 +110,7 @@ function M.handler(response)
 
     M.state.code_win = vim.api.nvim_get_current_win()
     M.state.current_bufnr = vim.fn.bufnr()
+    view.View.lsp_bufnr = vim.fn.bufnr()
     M.lsp_filepath = vim.api.nvim_buf_get_name(0)
 
     -- clear state when buffer is closed
@@ -147,10 +148,12 @@ function M.refresh_handler(response)
     local items = lsp_parser.parse(response)
     local items_type = lsp_parser.parse_type(response)
     M._merge_items(items)
+    -- TODO: Merge items_type as well
 
     M.state.type_items = items_type
     M.state.code_win = vim.api.nvim_get_current_win()
     M.state.current_bufnr = vim.fn.bufnr()
+    view.View.lsp_bufnr = vim.fn.bufnr()
 
     M._update_lines()
 end
@@ -430,10 +433,16 @@ end
 -- around current/previous function
 -- By change the end of item be the start of next item.
 function M._highlight_current_item(winnr)
+    if not view.is_win_open() then
+        return
+    end
     if writer.current_theme == "type" then
         if vim.fn.bufnr() ~= view.View.bufnr then
             vim.api.nvim_win_set_cursor(view.get_winnr(), {1, 1})
         end
+        return
+    end
+    if vim.fn.bufnr() == view.View.bufnr then
         return
     end
 
