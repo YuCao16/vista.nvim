@@ -90,6 +90,10 @@ function M.setup()
     M.View.side = config.side or M.View.side
     M.View.width = config.initial_width or M.View.width
     M.View.theme = config.theme
+    -- TODO: other place to update lsp_bufnr while switch buffer
+    if #vim.lsp.get_active_clients({ bufnr = 0 }) ~= 0 then
+        M.View.lsp_bufnr = vim.fn.bufnr()
+    end
     if config.show_title then
         M.View.title_line = 1
     end
@@ -145,7 +149,8 @@ function M._prevent_buffer_override()
             return
         end
 
-        if M.is_buf_notify(bufnr) then
+        local notify_ok, is_notify = pcall(M.is_buf_notify, bufnr)
+        if (not notify_ok) or is_notify then
             return
         end
         vim.cmd("buffer " .. M.View.bufnr)
