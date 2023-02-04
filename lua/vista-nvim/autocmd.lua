@@ -8,9 +8,7 @@ local function setup_global_autocmd()
         vim.api.nvim_create_autocmd("CursorHold", {
             pattern = "*",
             callback = function()
-                require("vista-nvim.handlers.basic")._highlight_current_item(
-                    nil
-                )
+                require("vista-nvim.handlers.basic")._highlight_current_item(0)
             end,
         })
     end
@@ -26,12 +24,14 @@ local function setup_global_autocmd()
         callback = updater._refresh,
     })
 
-    vim.api.nvim_create_autocmd({
-        "WinResized",
-    }, {
-        pattern = "*",
-        callback = updater._refresh_title,
-    })
+    if vim.fn.has("nvim-0.9") ~= 0 then
+        vim.api.nvim_create_autocmd({
+            "WinResized",
+        }, {
+            pattern = "*",
+            callback = updater._refresh_title,
+        })
+    end
 
     vim.api.nvim_create_autocmd("WinEnter", {
         pattern = "*",
