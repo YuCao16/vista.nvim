@@ -3,6 +3,7 @@ local config = require("vista-nvim.config")
 local utils_table = require("vista-nvim.utils.table")
 local folding = require("vista-nvim.folding")
 local kind = require("vista-nvim.render").kinds_number
+local view = require("vista-nvim.view")
 
 local M = {}
 
@@ -207,6 +208,7 @@ function M.node_is_keyword(buf, node)
 	return false
 end
 
+-- TODO: Default fold if items too many
 function M.classify(result)
     local res = {}
 
@@ -229,7 +231,11 @@ function M.classify(result)
                     data = {},
                 }
             end
-            if not M.node_is_keyword(0, v) then
+            local lsp_bufnr = 0
+            if view.View.lsp_bufnr ~= nil then
+                lsp_bufnr = view.View.lsp_bufnr
+            end
+            if not M.node_is_keyword(lsp_bufnr, v) then
                 local tmp = tmp_node(v)
                 table.insert(res[v.kind].data, tmp)
             end
