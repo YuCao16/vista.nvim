@@ -1,5 +1,11 @@
 # Vista.nvim
 
+<!--toc:start-->
+
+- [Vista.nvim](#vistanvim)
+  - [TODO](#todo)
+  <!--toc:end-->
+
 ## TODO
 
 - [x] Implement a loading page
@@ -9,6 +15,8 @@
 - [ ] Implement set_all_fold for type
 
 - [ ] Implement preview
+
+- [ ] Implement detail
 
 - [ ] Quit all Vista window within current tabpage
 
