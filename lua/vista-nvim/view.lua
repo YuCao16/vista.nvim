@@ -88,7 +88,7 @@ end
 -- set user options and create tree buffer (should never be wiped)
 function M.setup()
     M.View.side = config.side or M.View.side
-    M.View.width = config.initial_width or M.View.width
+    M.View.width = config.get_window_width() or M.View.width
     M.View.theme = config.theme
     -- TODO: other place to update lsp_bufnr while switch buffer
     if #vim.lsp.get_active_clients({ bufnr = 0 }) ~= 0 then

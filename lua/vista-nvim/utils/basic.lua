@@ -8,6 +8,15 @@ function M.echo_warning(msg)
     api.nvim_command("echohl None")
 end
 
+function M.has_value(tab, val)
+    for _, value in ipairs(tab) do
+        if value == val then
+            return true
+        end
+    end
+    return false
+end
+
 --- @param  f function
 --- @param  delay number
 --- @return function

@@ -6,8 +6,10 @@ M.current_support = {
     lua = "lua",
     markdown = "markdown",
     cpp = "cpp",
-    julia = "julia",
+    cmake = "cmake",
     cuda = "cuda",
+    julia = "julia",
+    sh = "sh",
     yaml = "yaml",
 }
 

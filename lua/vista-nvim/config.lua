@@ -30,6 +30,7 @@ M.theme_markers = { "🆃 ", "🅲 " }
 M.symbol_blacklist = {}
 -- M.lsp_blacklist = { "pyright" }
 M.lsp_blacklist = { "jedi_language_server", "null-ls" }
+M.skip_filetype = { "neo-tree", "NvimTree" }
 
 -- A list of all symbols to display. Set to false to display all symbols.
 -- This can be a filetype map (see :help aerial-filetype-map)
@@ -81,6 +82,32 @@ local function has_value(tab, val)
     end
 
     return false
+end
+
+function M.get_window_width()
+    if M.width == nil or M.width < 0 then
+        return 30
+    end
+    if M.width < 0.5 then
+        return math.ceil(vim.o.columns * M.width)
+    elseif M.width < 1 and M.width > 0.5 then
+        vim.api.nvim_echo({
+            {
+                "M.width relative width can't be greater than 0.5, set to half screen",
+                "None",
+            },
+        }, false, {})
+        return 30
+    end
+    if M.width < vim.o.columns then
+        return M.width
+    end
+    vim.api.nvim_echo(
+        { { "invaild M.width, set to default 30", "None" } },
+        false,
+        {}
+    )
+    return 30
 end
 
 function M.is_symbol_blacklisted(kind)

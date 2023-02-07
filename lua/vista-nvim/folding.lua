@@ -25,6 +25,20 @@ local get_default_folded = function(depth)
     end
 end
 
+local rules = { python = { "Function", "Variable" } }
+
+local default_folded_type = function(filetype, kind)
+    if rules[filetype] == nil then
+        return true
+    end
+    for _, i in ipairs(rules) do
+        if kind == i then
+            return true
+        end
+    end
+    return false
+end
+
 M.is_folded = function(node)
     if node.folded ~= nil then
         return node.folded
