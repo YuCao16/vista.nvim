@@ -59,6 +59,17 @@ function M.setup_handler_binding()
             { noremap = true, silent = true, nowait = true }
         )
     end
+    vim.api.nvim_create_autocmd({
+        "TextChanged", "BufWritePost"
+    }, {
+        pattern = "*",
+        callback = function ()
+            if vim.fn.bufnr() == view.View.bufnr then
+                return
+            end
+            M._update_lines(true)
+        end,
+    })
 end
 
 local function wipe_state()
@@ -438,7 +449,7 @@ function M._highlight_current_item(winnr)
     end
     if writer.current_theme == "type" then
         if vim.fn.bufnr() ~= view.View.bufnr then
-            vim.api.nvim_win_set_cursor(view.get_winnr(), {1, 1})
+            vim.api.nvim_win_set_cursor(view.get_winnr(), { 1, 1 })
         end
         return
     end
