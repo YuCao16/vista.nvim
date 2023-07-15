@@ -35,8 +35,9 @@ local function max_title_width()
     return M.current_width
 end
 
-local hlns = vim.api.nvim_create_namespace("vista-icon-highlight")
 function M.add_highlighs_title(bufnr, theme)
+    local hlns = vim.api.nvim_create_namespace("vista-icon-highlight")
+    vim.api.nvim_buf_clear_namespace(bufnr, hlns, 0, -1)
     vim.api.nvim_buf_add_highlight(bufnr, hlns, "VistaOutlineTitle", 0, 3, -2)
     if theme == "tree" then
         vim.api.nvim_buf_add_highlight(
@@ -60,6 +61,8 @@ function M.add_highlighs_title(bufnr, theme)
 end
 
 function M.add_highlights(bufnr, hl_info, nodes)
+    local ns_id = vim.api.nvim_create_namespace("vista-all-highlight")
+    vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
     if config.show_title then
         M.add_highlighs_title(bufnr, M.structure_theme)
     end
@@ -69,7 +72,7 @@ function M.add_highlights(bufnr, hl_info, nodes)
                 for group, scope in pairs(v) do
                     vim.api.nvim_buf_add_highlight(
                         bufnr,
-                        0,
+                        ns_id,
                         group,
                         k,
                         scope[1],
@@ -84,7 +87,7 @@ function M.add_highlights(bufnr, hl_info, nodes)
         local line, hl_start, hl_end, hl_type = unpack(line_hl)
         vim.api.nvim_buf_add_highlight(
             bufnr,
-            hlns,
+            ns_id,
             hl_type,
             line - 1 + view.View.title_line,
             hl_start,
@@ -92,7 +95,6 @@ function M.add_highlights(bufnr, hl_info, nodes)
         )
     end
 
-    -- TODO: add hover highlight
     M.add_hover_highlights(bufnr, nodes)
 end
 
@@ -122,6 +124,9 @@ end
 
 -- TODO: more readable
 function M.clean_path(filepath, width)
+    if filepath == nil then
+        return "VistaNvim"
+    end
     local internal_width = width or config.width
     filepath = filepath
     if filepath:len() > internal_width - 3 then
@@ -176,6 +181,11 @@ function M._should_update_title(bufnr)
     if string.match(view.View.current_filepath, ".*VistaNvim_.*") then
         return false
     end
+    if string.match(view.View.current_filepath, " ") then -- for example: NeoTree
+        if vim.fn.expand("%:e") == "" then
+            return false
+        end
+    end
     if #vim.lsp.get_active_clients({ bufnr = current_buf }) == 0 then
         return false
     end
@@ -204,6 +214,9 @@ function M.write_title(bufnr, switch, width)
     end
     local theme_marker = config.get_theme_icon(M.structure_theme)
     local current_filepath = vim.api.nvim_buf_get_name(0)
+    if current_filepath == "" then
+        return
+    end
     M.current_width = view.get_width(vim.api.nvim_get_current_tabpage())
     vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
     vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, {
@@ -261,8 +274,7 @@ end
 M.test_writer = {}
 function M.parse_and_write(bufnr, outline_items, theme)
     M.test_writer = outline_items
-    local lines, hl_info =
-        parser.get_lines(outline_items, M.structure_theme)
+    local lines, hl_info = parser.get_lines(outline_items, M.structure_theme)
     if lines[1] == nil then
         return
     end
