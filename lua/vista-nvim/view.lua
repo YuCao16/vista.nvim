@@ -13,6 +13,8 @@ M.View = {
     width = 30,
     side = "left",
     current_ft = nil,
+    last_ft = nil,
+    last_filename = nil,
     current_filepath = nil,
     lsp_bufnr = nil,
     lsp_ft = nil,
@@ -220,6 +222,7 @@ local function set_local(opt, value)
 end
 
 function M.open(options)
+    -- TODO: enable unfocus
     -- if #vim.lsp.get_active_clients({ bufnr = 0 }) ~= 0 then
     --     M.View.lsp_bufnr = vim.fn.bufnr()
     --     M.View.lsp_ft = vim.bo.filetype
@@ -229,11 +232,16 @@ function M.open(options)
         M.setup()
     end
 
-    a.nvim_command("vsp")
+    local current_winid = a.nvim_get_current_win()
+    a.nvim_command("wincmd l")
+    a.nvim_command(
+        "noau vertical "
+            .. M.View.side
+            .. "below "
+            .. get_defined_width()
+            .. "split"
+    )
 
-    local move_to = move_tbl[M.View.side]
-    a.nvim_command("wincmd " .. move_to)
-    a.nvim_command("vertical resize " .. get_defined_width())
     local winnr = a.nvim_get_current_win()
     M.View.win_height = a.nvim_win_get_height(winnr)
     local tabpage = a.nvim_get_current_tabpage()
@@ -246,9 +254,8 @@ function M.open(options)
     for k, v in pairs(M.View.winopts) do
         set_local(k, v)
     end
-    -- vim.cmd(":wincmd =")
     if not options.focus then
-        vim.cmd("wincmd p")
+        a.nvim_set_current_win(current_winid)
     end
 end
 
