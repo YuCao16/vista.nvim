@@ -15,21 +15,67 @@ M.disable_max_sizes = 2000000 -- Default 2MB
 M.default_provider = "lsp"
 M.theme = "type" -- tree or type
 M.filetype_map = {
-    python = { provider = "lsp", symbol_blacklist = {} },
-    rust = { provider = "lsp", symbol_blacklist = {} },
-    lua = { provider = "lsp", symbol_blacklist = {} },
-    cpp = { provider = "lsp", symbol_blacklist = {} },
-    c = { provider = "lsp", symbol_blacklist = {} },
-    markdown = { provider = "lsp", symbol_blacklist = {} },
+    python = {
+        provider = "lsp",
+        symbol_blacklist = { "Module" },
+        type_symbol_blacklist = { "Module" },
+    },
+    rust = {
+        provider = "lsp",
+        symbol_blacklist = {},
+        type_symbol_blacklist = {},
+    },
+    lua = {
+        provider = "lsp",
+        symbol_blacklist = {
+            "Variable",
+            "Constant",
+            "String",
+            "Number",
+            "Boolean",
+            "Array",
+            "Package",
+        },
+        type_symbol_blacklist = {
+            "Variable",
+            "Constant",
+            "String",
+            "Number",
+            "Boolean",
+            "Array",
+            "Package",
+        },
+    },
+    cpp = {
+        provider = "lsp",
+        symbol_blacklist = {},
+        type_symbol_blacklist = {},
+    },
+    c = { provider = "lsp", symbol_blacklist = {}, type_symbol_blacklist = {} },
+    markdown = {
+        provider = "lsp",
+        symbol_blacklist = {},
+        type_symbol_blacklist = {},
+    },
 }
 M.show_symbol_details = true
 M.auto_unfold_hover = false
 M.autofold_depth = 2
 M.fold_markers = { "", "" }
 M.theme_markers = { "🆃 ", "🅲 " }
+-- TODO: symbol_blacklist currently not supported, as the bottom marker will not be shown properly.
 M.symbol_blacklist = {}
--- M.lsp_blacklist = { "pyright" }
-M.lsp_blacklist = { "jedi_language_server", "null-ls" }
+M.type_symbol_blacklist = {
+    "Variable",
+    "Constant",
+    "String",
+    "Number",
+    "Boolean",
+    "Array",
+    "Package",
+}
+-- M.lsp_blacklist = { "jedi_language_server", "null-ls" }
+M.lsp_blacklist = { "pyright", "null-ls" }
 M.skip_filetype = { "neo-tree", "NvimTree" }
 
 -- A list of all symbols to display. Set to false to display all symbols.
@@ -37,20 +83,35 @@ M.skip_filetype = { "neo-tree", "NvimTree" }
 -- To see all available values, see :help SymbolKind
 M.filter_kind = {}
 M.symbols = {
-    File = { icon = "󰈙", hl = "@URI" },
-    Module = { icon = "", hl = "@Namespace" },
-    Namespace = { icon = "󰌗", hl = "@Namespace" },
-    Package = { icon = "󰏖", hl = "@Namespace" },
-    Class = { icon = "󰌗", hl = "@Class" },
-    Method = { icon = "", hl = "@Method" },
-    Property = { icon = "󰆧", hl = "@Method" },
-    Field = { icon = "", hl = "@Field" },
-    Constructor = { icon = "", hl = "@Constructor" },
-    Enum = { icon = "ℰ", hl = "@Type" },
-    Interface = { icon = "", hl = "@Type" },
+    -- kind
+    Text = { icon = "󰉿", hl = "@Method" },
+    Method = { icon = "󰆧", hl = "@Method" },
     Function = { icon = "󰊕", hl = "@Function" },
-    Variable = { icon = "", hl = "@Constant" },
-    Constant = { icon = "", hl = "@Constant" },
+    Constructor = { icon = "", hl = "@Constructor" },
+    Field = { icon = "󰜢", hl = "@Field" },
+    Variable = { icon = "󰀫", hl = "@Constant" },
+    Class = { icon = "󰠱", hl = "@Type" },
+    Interface = { icon = "", hl = "@Type" },
+    Module = { icon = "", hl = "@namespace" },
+    Property = { icon = "󰜢", hl = "@Method" },
+    Unit = { icon = "󰑭", hl = "@Method" },
+    Value = { icon = "󰎠", hl = "@Method" },
+    Enum = { icon = "", hl = "@Type" },
+    Keyword = { icon = "󰌋", hl = "@Type" },
+    Snippet = { icon = "", hl = "@Type" },
+    Color = { icon = "󰏘", hl = "@Type" },
+    File = { icon = "󰈙", hl = "@text.uri" },
+    Reference = { icon = "󰈇", hl = "@URI" },
+    Folder = { icon = "󰉋", hl = "@URI" },
+    EnumMember = { icon = "", hl = "@Field" },
+    Constant = { icon = "󰏿", hl = "@Constant" },
+    Struct = { icon = "󰙅", hl = "@Type" },
+    Event = { icon = "", hl = "@Type" },
+    Operator = { icon = "󰆕", hl = "@Operator" },
+    TypeParameter = { icon = "󰊄", hl = "@Parameter" },
+    -- non-kind
+    Namespace = { icon = "󰌗", hl = "@namespace" },
+    Package = { icon = "󰏖", hl = "@namespace" },
     String = { icon = "󰀬", hl = "@String" },
     Number = { icon = "󰎠", hl = "@Number" },
     Boolean = { icon = "", hl = "@Boolean" },
@@ -58,11 +119,6 @@ M.symbols = {
     Object = { icon = "󰅩", hl = "@Type" },
     Key = { icon = "󰌋", hl = "@Type" },
     Null = { icon = "", hl = "@Type" },
-    EnumMember = { icon = "", hl = "@Field" },
-    Struct = { icon = "󰌗", hl = "@Type" },
-    Event = { icon = "", hl = "@Type" },
-    Operator = { icon = "󰆕", hl = "@Operator" },
-    TypeParameter = { icon = "󰊄", hl = "@Parameter" },
     Component = { icon = "󰅴", hl = "@Function" },
     Fragment = { icon = "󰅴", hl = "@Constant" },
     -- ccls
@@ -110,11 +166,32 @@ function M.get_window_width()
     return 30
 end
 
-function M.is_symbol_blacklisted(kind)
+-- function M.is_symbol_blacklisted(kind)
+--     if kind == nil then
+--         return false
+--     end
+--     return has_value(M.symbol_blacklist, kind)
+-- end
+--
+-- function M.is_type_symbol_blacklisted(kind)
+--     if kind == nil then
+--         return false
+--     end
+--     return has_value(M.type_symbol_blacklist, kind)
+-- end
+
+function M.is_symbol_blacklisted(kind, ft)
     if kind == nil then
         return false
     end
-    return has_value(M.symbol_blacklist, kind)
+    return has_value(M.filetype_map[ft].symbol_blacklist, kind)
+end
+
+function M.is_type_symbol_blacklisted(kind, ft)
+    if kind == nil then
+        return false
+    end
+    return has_value(M.filetype_map[ft].type_symbol_blacklist, kind)
 end
 
 function M.is_client_blacklisted_id(client_id)
