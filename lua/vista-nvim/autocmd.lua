@@ -1,6 +1,5 @@
 local config = require("vista-nvim.config")
 local updater = require("vista-nvim.updater")
-
 local M = {}
 
 local function setup_global_autocmd()
@@ -19,6 +18,8 @@ local function setup_global_autocmd()
         "TabEnter",
         "BufWritePost",
         "LspAttach",
+        "TextChanged",
+        "BufWritePost"
     }, {
         pattern = "*",
         callback = updater._refresh,
@@ -39,6 +40,15 @@ local function setup_global_autocmd()
         -- TODO: add preview close function
         -- callback = require("vista-nvim.preview").close,
     })
+    -- local GoyoGroup = vim.api.nvim_create_augroup('GoyoGroup', { clear = true })
+    --
+    -- vim.api.nvim_create_autocmd('User', {
+    --     pattern = 'GoyoEnter',
+    --     callback = function()
+    --         pass
+    --     end,
+    --     group = GoyoGroup
+    -- })
 end
 
 local function setup_buffer_autocmd()
