@@ -24,6 +24,9 @@ function M.__refresh()
     view.View.current_filepath = vim.fn.expand("%:p")
     if utils_provider.current_support[view.View.current_ft] == nil then
         return
+    else
+        view.View.last_ft = vim.bo.filetype
+        view.View.last_filename = a.nvim_buf_get_name(0)
     end
 
     if config.filetype_map[view.View.current_ft] == nil then
@@ -52,7 +55,6 @@ function M.__refresh()
     if handler ~= nil then
         providers.request_symbols(handler, view.View.provider)
     end
-    -- vim.notify("updating default_provider")
 end
 
 function M.__refresh_title()
@@ -66,6 +68,7 @@ function M.__refresh_title()
 end
 
 --TODO: check out why dealy < 300 cause nil response while first calling
+--TODO: refresh after filechanged
 M._refresh = utils_basic.debounce(M.__refresh, 300)
 M._refresh_title = utils_basic.debounce(M.__refresh_title, 300)
 
