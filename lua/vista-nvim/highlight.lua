@@ -7,11 +7,10 @@ local function link(group1, group2)
 end
 
 local function update_hl(group, tbl)
-    local old_hl = vim.api.nvim_get_hl_by_name(group, true)
-    local new_hl = vim.tbl_extend("force", { bg = old_hl.background }, tbl)
+    local old_hl = vim.api.nvim_get_hl(0, { name = group, link = false })
     local new_hl = vim.tbl_extend(
         "force",
-        { bg = old_hl.background, fg = old_hl.foreground },
+        { bg = old_hl.bg, fg = old_hl.fg },
         tbl
     )
     vim.api.nvim_set_hl(0, group, new_hl)
