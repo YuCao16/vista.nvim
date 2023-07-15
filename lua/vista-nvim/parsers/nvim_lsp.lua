@@ -1,11 +1,32 @@
 local render = require("vista-nvim.render")
 local config = require("vista-nvim.config")
 local utils_table = require("vista-nvim.utils.table")
+local utils_basic = require("vista-nvim.utils.basic")
 local folding = require("vista-nvim.folding")
 local kind = require("vista-nvim.render").kinds_number
 local view = require("vista-nvim.view")
 
 local M = {}
+
+M.type_fold_info = {}
+
+M.get_default_fold_type = function(classified_outline_items)
+    if view.View.last_filename == nil then
+        return
+    end
+    -- local rules_ft = {}
+    -- for key, _ in pairs(config.filetype_map) do
+    --     if config.filetype_map[key].type_symbol_blacklist ~= {} then
+    --         table.insert(rules_ft, key)
+    --     end
+    -- end
+    for k, v in pairs(classified_outline_items) do
+        local kind_name = vim.lsp.protocol.SymbolKind[k]
+        if not v.data.expand then
+            M.type_fold_info[view.View.last_filename][kind_name] = true
+        end
+    end
+end
 
 -- TODO: implement multiple Lsp coorperate
 -- Now this is disalbe in M.parse()
@@ -20,7 +41,7 @@ local function parse_result(result, depth, hierarchy, parent)
     local ret = {}
 
     for index, value in pairs(result) do
-        if not config.is_symbol_blacklisted(render.kinds[value.kind]) then
+        if not config.is_symbol_blacklisted(render.kinds[value.kind], view.View.last_ft) then
             -- the hierarchy is basically a table of booleans which tells whether
             -- the parent was the last in its group or not
             local hir = hierarchy or {}
@@ -66,7 +87,7 @@ local function parse_result(result, depth, hierarchy, parent)
                 local child_hir = utils_table.array_copy(hir)
                 table.insert(child_hir, isLast)
                 children =
-                parse_result(value.children, level + 1, child_hir, node)
+                    parse_result(value.children, level + 1, child_hir, node)
             end
 
             node.children = children
@@ -162,6 +183,10 @@ function M.parse(response)
     return parse_result(sorted, nil, nil)
 end
 
+function M.filter_type_result(result)
+
+end
+
 function M.parse_type(response)
     local all_results = {}
 
@@ -195,17 +220,17 @@ function M.parse_type(response)
 end
 
 function M.node_is_keyword(buf, node)
-	if not node.selectionRange then
-		return false
-	end
-	local captures =
-		vim.treesitter.get_captures_at_pos(buf, node.selectionRange.start.line, node.selectionRange.start.character)
-	for _, v in pairs(captures) do
-		if v.capture == "keyword" or v.capture == "conditional" or v.capture == "repeat" then
-			return true
-		end
-	end
-	return false
+    if not node.selectionRange then
+        return false
+    end
+    local captures =
+        vim.treesitter.get_captures_at_pos(buf, node.selectionRange.start.line, node.selectionRange.start.character)
+    for _, v in pairs(captures) do
+        if v.capture == "keyword" or v.capture == "conditional" or v.capture == "repeat" then
+            return true
+        end
+    end
+    return false
 end
 
 -- TODO: Default fold if items too many
@@ -236,8 +261,10 @@ function M.classify(result)
                 lsp_bufnr = view.View.lsp_bufnr
             end
             if not M.node_is_keyword(lsp_bufnr, v) then
+                -- if not config.is_type_symbol_blacklisted(render.kinds[v.kind], view.View.last_ft) then
                 local tmp = tmp_node(v)
                 table.insert(res[v.kind].data, tmp)
+                -- end
             end
 
             if v.children then
@@ -251,6 +278,11 @@ function M.classify(result)
     local new = {}
     for _, v in pairs(keys) do
         new[v] = res[v]
+        if view.View.last_ft ~= nil then
+            if utils_basic.has_value(config.filetype_map[view.View.last_ft].type_symbol_blacklist, vim.lsp.protocol.SymbolKind[v]) then
+                new[v].should_folded = true
+            end
+        end
     end
 
     -- remove unnecessary data reduce memory usage
@@ -298,30 +330,54 @@ function M.get_lines_type(classified_outline_items)
     local lines = {}
     local hi = {}
     for k, v in pairs(classified_outline_items) do
-        local scope = {}
-        local indent_with_icon = "  " .. ""
-        table.insert(lines, indent_with_icon .. " " .. kind[k][1])
-        scope["VistaConnector"] = { 0, #indent_with_icon }
-        scope["VistaOutline" .. kind[k][1]] = { #indent_with_icon, -1 }
-        table.insert(hi, scope)
-        v.winline = #lines
-        for j, node in pairs(v.data) do
-            node.hi_scope = {}
-            local indent = j == #v.data and "  └" .. " " or "  │" .. " "
-            node.name = indent .. kind[node.kind][2] .. node.name
-            table.insert(lines, node.name)
-            node.hi_scope["VistaIndent"] = { 0, #indent }
-            node.hi_scope["VistaOutline" .. kind[node.kind][1]] =
+        if v.should_folded then
+            local scope = {}
+            local indent_with_icon = "  " .. config.fold_markers[2]
+            table.insert(lines, indent_with_icon .. " " .. kind[k][1])
+            scope["VistaConnector"] = { 0, #indent_with_icon }
+            scope["VistaOutline" .. kind[k][1]] = { #indent_with_icon, -1 }
+            table.insert(hi, scope)
+            v.winline = #lines
+            for j, node in pairs(v.data) do
+                node.hi_scope = {}
+                local indent = j == #v.data and "  └" .. " " or "  │" .. " "
+                node.name = indent .. kind[node.kind][2] .. node.name
+                node.hi_scope["VistaIndent"] = { 0, #indent }
+                node.hi_scope["VistaOutline" .. kind[node.kind][1]] =
                 { #indent, #indent + #kind[node.kind][2] }
-            table.insert(hi, node.hi_scope)
-            node.winline = #lines
+                node.winline = #lines
+            end
+            table.insert(lines, "")
+            table.insert(hi, {})
+            v.should_folded = false
+            v.expand = false
+        else
+            local scope = {}
+            local indent_with_icon = "  " .. config.fold_markers[1]
+            table.insert(lines, indent_with_icon .. " " .. kind[k][1])
+            scope["VistaConnector"] = { 0, #indent_with_icon }
+            scope["VistaOutline" .. kind[k][1]] = { #indent_with_icon, -1 }
+            table.insert(hi, scope)
+            v.winline = #lines
+            for j, node in pairs(v.data) do
+                node.hi_scope = {}
+                local indent = j == #v.data and "  └" .. " " or "  │" .. " "
+                node.name = indent .. kind[node.kind][2] .. node.name
+                table.insert(lines, node.name)
+                node.hi_scope["VistaIndent"] = { 0, #indent }
+                node.hi_scope["VistaOutline" .. kind[node.kind][1]] =
+                { #indent, #indent + #kind[node.kind][2] }
+                table.insert(hi, node.hi_scope)
+                node.winline = #lines
+            end
+            table.insert(lines, "")
+            table.insert(hi, {})
         end
-        table.insert(lines, "")
-        table.insert(hi, {})
     end
+    table.remove(lines) -- remove the blank line after last line
+    table.remove(hi)
     return lines, hi
 end
-
 
 function M.get_lines_tree(flattened_outline_items)
     local lines = {}

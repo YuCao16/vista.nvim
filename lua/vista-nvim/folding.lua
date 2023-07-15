@@ -25,13 +25,11 @@ local get_default_folded = function(depth)
     end
 end
 
-local rules = { python = { "Function", "Variable" } }
-
 local default_folded_type = function(filetype, kind)
-    if rules[filetype] == nil then
+    if config.filetype_map[filetype].type_symbol_blacklist == {} then
         return true
     end
-    for _, i in ipairs(rules) do
+    for _, i in ipairs(config.filetype_map[filetype].type_symbol_blacklist) do
         if kind == i then
             return true
         end
