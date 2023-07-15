@@ -96,14 +96,25 @@ function M.destroy()
     view.destroy()
 end
 
+-- TODO: replace defer_fn maybe
 function M.focus()
-    if not view.is_win_open() then
-        M.toggle()
-        if view.View.bufnr == nil then
-            return
-        end
+    -- if not view.is_win_open() then
+    if not M._internal_setup_called then
+        M.open()
+        vim.defer_fn(function()
+            if view.View.bufnr == nil then
+                return
+            end
+            vim.fn.win_gotoid(view.get_winnr())
+        end, 1000)
+        return
     end
-    vim.fn.win_gotoid(view.get_winnr())
+    if not view.is_win_open() then
+        M.open()
+        vim.fn.win_gotoid(view.get_winnr())
+    else
+        vim.fn.win_gotoid(view.get_winnr())
+    end
 end
 
 function M.toggle(opt)
