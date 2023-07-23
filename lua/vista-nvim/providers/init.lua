@@ -14,7 +14,7 @@ _G._symbols_outline_current_provider = nil
 function M.has_provider(_provider)
     local ret = false
     if _provider ~= nil then
-        provider = require(providers[_provider])
+        local provider = require(providers[_provider])
         if provider.should_use_provider(0) then
             return true
         end
@@ -33,7 +33,7 @@ end
 function M.request_symbols(on_symbols, _provider, bufnr)
     bufnr = bufnr or 0
     if _provider ~= nil then
-        provider = require(providers[_provider])
+        local provider = require(providers[_provider])
         if provider.should_use_provider(bufnr) then
             _G._symbols_outline_current_provider = provider
             provider.request_symbols(on_symbols, bufnr)

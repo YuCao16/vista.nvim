@@ -190,6 +190,7 @@ function M._current_node()
 end
 
 function M.goto_location(change_focus)
+    local res = true
     if M.current_theme == "tree" then
         M.goto_location_tree()
     elseif M.current_theme == "type" then

@@ -35,7 +35,7 @@ function M.__refresh()
         view.View.provider = config.default_provider -- string
     else
         view.View.provider = config.filetype_map[view.View.current_ft].provider --string
-        handler = handlers.get_handler(
+        local handler = handlers.get_handler(
             view.View.provider,
             { refresh = not M.first_call[view.View.provider] }
         )
@@ -47,7 +47,7 @@ function M.__refresh()
     end
 
     -- While setup map is not visible
-    handler = handlers.get_handler(
+    local handler = handlers.get_handler(
         view.View.provider,
         { refresh = not M.first_call[view.View.provider] }
     )

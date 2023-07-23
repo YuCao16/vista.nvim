@@ -16,13 +16,13 @@ function M.handle_markdown()
             is_inside_code_block = not is_inside_code_block
         end
 
-        header, title = string.match(value, "^(#+)%s+(.*)$")
+        local header, title = string.match(value, "^(#+)%s+(.*)$")
         if header and not is_inside_code_block then
-            depth = #header + 1
+            local depth = #header + 1
 
             for i = depth - 1, 1, -1 do
                 if level_symbols[i] ~= nil then
-                    parent = level_symbols[i].children
+                    local parent = level_symbols[i].children
                     break
                 end
             end
@@ -36,7 +36,7 @@ function M.handle_markdown()
             end
             max_level = depth
 
-            entry = {
+            local entry = {
                 kind = 13,
                 name = title,
                 selectionRange = {

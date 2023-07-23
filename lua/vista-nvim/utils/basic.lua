@@ -58,8 +58,8 @@ function M.get_existing_buffers(opts)
 end
 
 M.flash_highlight = function(bufnr, lnum)
-    hl_group = "VistaFlashLine"
-    durationMs = 450
+    local hl_group = "VistaFlashLine"
+    local durationMs = 450
     local ns =
         vim.api.nvim_buf_add_highlight(bufnr, 0, hl_group, lnum - 1, 0, -1)
     local remove_highlight = function()
