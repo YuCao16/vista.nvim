@@ -33,7 +33,7 @@ end
 
 -- for highlight group with gui=bold
 function M.get_highlight_bg_fg(highlight_group)
-    highlight_content = vim.api.nvim_get_hl_by_name(highlight_group, true)
+    local highlight_content = vim.api.nvim_get_hl_by_name(highlight_group, true)
     return {
         bg = highlight_content.background,
         fg = highlight_content.foreground,
@@ -66,7 +66,7 @@ function M.gen_outline_hi()
                 link(hi_name, v[3])
                 update_hl(hi_name, { bold = true })
             else
-                vim.api.nvim_set_hl(0, hi_name, { fg = v[3] })
+                vim.api.nvim_set_hl(0, hi_name, { link = v[3] })
             end
         end
     end
