@@ -15,6 +15,7 @@ local function setup_global_autocmd()
     vim.api.nvim_create_autocmd({
         "InsertLeave",
         "BufWinEnter",
+        "BufEnter",
         "TabEnter",
         "BufWritePost",
         "LspAttach",
