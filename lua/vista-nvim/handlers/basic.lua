@@ -192,7 +192,7 @@ end
 function M.goto_location(change_focus)
     local res = true
     if M.current_theme == "tree" then
-        M.goto_location_tree()
+        res = M.goto_location_tree()
     elseif M.current_theme == "type" then
         res = M.goto_location_type()
     end
@@ -215,6 +215,7 @@ function M.goto_location_tree()
         { node.line + 1, node.character }
     )
     utils_basic.flash_highlight(M.state.current_bufnr, node.line + 1)
+    return false
 end
 
 function M.goto_location_type()
@@ -242,6 +243,7 @@ function M.goto_location_type()
         )
     end
     utils_basic.flash_highlight(M.state.current_bufnr, node.pos[1] + 1)
+    return false
 end
 
 ---------------
