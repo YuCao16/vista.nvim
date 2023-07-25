@@ -219,6 +219,11 @@ function M.goto_location_tree()
 end
 
 function M.goto_location_type()
+    -- TODO: fix splitkeep
+    -- local has_splitkeep, splitkeep = pcall(vim.api.nvim_get_option_value, "splitkeep", {})
+    -- if has_splitkeep then
+    --     vim.api.nvim_set_option_value("splitkeep", "cursor", {})
+    -- end
     local curline = vim.api.nvim_win_get_cursor(0)[1] - 1
     local node
     for _, nodes in pairs(M.state.classified_outline_items) do
@@ -244,6 +249,7 @@ function M.goto_location_type()
         )
         utils_basic.flash_highlight(range.start.line, range.start.character)
     end
+    -- vim.api.nvim_set_option_value("splitkeep", splitkeep, {})
     return false
 end
 
