@@ -236,13 +236,14 @@ function M.goto_location_type()
     local winid = M.state.code_win
     if node.pos then
         vim.api.nvim_win_set_cursor(winid, { node.pos[1] + 1, node.pos[2] })
+        utils_basic.flash_highlight(M.state.current_bufnr, node.pos[1] + 1)
     else
         vim.api.nvim_win_set_cursor(
             winid,
             { range.start.line + 1, range.start.character }
         )
+        utils_basic.flash_highlight(range.start.line, range.start.character)
     end
-    utils_basic.flash_highlight(M.state.current_bufnr, node.pos[1] + 1)
     return false
 end
 
@@ -451,9 +452,6 @@ function M._highlight_current_item(winnr)
         return
     end
     if writer.current_theme == "type" then
-        if vim.fn.bufnr() ~= view.View.bufnr then
-            vim.api.nvim_win_set_cursor(view.get_winnr(), { 1, 1 })
-        end
         return
     end
     if vim.fn.bufnr() == view.View.bufnr then
