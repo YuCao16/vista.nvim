@@ -192,9 +192,9 @@ end
 function M.goto_location(change_focus)
     local res = true
     if M.current_theme == "tree" then
-        res = M.goto_location_tree()
+        res = M.goto_location_tree(change_focus)
     elseif M.current_theme == "type" then
-        res = M.goto_location_type()
+        res = M.goto_location_type(change_focus)
     end
     if config.auto_close then
         M.close_outline()
@@ -202,28 +202,24 @@ function M.goto_location(change_focus)
     if res then
         return
     end
-    if change_focus then
-        vim.fn.win_gotoid(M.state.code_win)
-        vim.cmd("normal! zz")
-    end
 end
 
-function M.goto_location_tree()
+function M.goto_location_tree(change_focus)
     local node = M._current_node()
     vim.api.nvim_win_set_cursor(
         M.state.code_win,
         { node.line + 1, node.character }
     )
     utils_basic.flash_highlight(M.state.current_bufnr, node.line + 1)
+    if change_focus then
+        vim.fn.win_gotoid(M.state.code_win)
+        vim.cmd("normal! zz")
+    end
     return false
 end
 
-function M.goto_location_type()
-    -- TODO: fix splitkeep
-    -- local has_splitkeep, splitkeep = pcall(vim.api.nvim_get_option_value, "splitkeep", {})
-    -- if has_splitkeep then
-    --     vim.api.nvim_set_option_value("splitkeep", "cursor", {})
-    -- end
+function M.goto_location_type(change_focus)
+    local has_splitkeep, splitkeep = pcall(vim.api.nvim_get_option_value, "splitkeep", {})
     local curline = vim.api.nvim_win_get_cursor(0)[1] - 1
     local node
     for _, nodes in pairs(M.state.classified_outline_items) do
@@ -249,7 +245,20 @@ function M.goto_location_type()
         )
         utils_basic.flash_highlight(range.start.line, range.start.character)
     end
-    -- vim.api.nvim_set_option_value("splitkeep", splitkeep, {})
+    if change_focus then
+        vim.fn.win_gotoid(M.state.code_win)
+        vim.cmd("normal! zz")
+    end
+    if has_splitkeep and splitkeep ~= "cursor" then
+        if node.pos then
+            vim.api.nvim_win_set_cursor(winid, { node.pos[1] + 1, node.pos[2] })
+        else
+            vim.api.nvim_win_set_cursor(
+                winid,
+                { range.start.line + 1, range.start.character }
+            )
+        end
+    end
     return false
 end
 
