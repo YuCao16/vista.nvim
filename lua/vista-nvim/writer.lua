@@ -186,7 +186,10 @@ function M._should_update_title(bufnr)
             return false
         end
     end
-	if #vim.lsp.get_active_clients({ bufnr = vim.api.nvim_get_current_buf() }) == 0 then
+    if
+        #vim.lsp.get_active_clients({ bufnr = vim.api.nvim_get_current_buf() })
+        == 0
+    then
         return false
     end
     return true

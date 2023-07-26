@@ -20,7 +20,7 @@ local function setup_global_autocmd()
         "BufWritePost",
         "LspAttach",
         "TextChanged",
-        "BufWritePost"
+        "BufWritePost",
     }, {
         pattern = "*",
         callback = updater._refresh,

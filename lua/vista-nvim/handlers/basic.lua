@@ -60,10 +60,11 @@ function M.setup_handler_binding()
         )
     end
     vim.api.nvim_create_autocmd({
-        "TextChanged", "BufWritePost"
+        "TextChanged",
+        "BufWritePost",
     }, {
         pattern = "*",
-        callback = function ()
+        callback = function()
             if vim.fn.bufnr() == view.View.bufnr then
                 return
             end
@@ -219,7 +220,8 @@ function M.goto_location_tree(change_focus)
 end
 
 function M.goto_location_type(change_focus)
-    local has_splitkeep, splitkeep = pcall(vim.api.nvim_get_option_value, "splitkeep", {})
+    local has_splitkeep, splitkeep =
+        pcall(vim.api.nvim_get_option_value, "splitkeep", {})
     local curline = vim.api.nvim_win_get_cursor(0)[1] - 1
     local node
     for _, nodes in pairs(M.state.classified_outline_items) do
