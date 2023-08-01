@@ -5,7 +5,8 @@ local a = vim.api
 
 local M = {}
 
-M.View = {
+-- Define a table that will serve as a template for initializing or resetting M.View.
+local defaultView = {
     bufnr = nil,
     win_height = 10,
     tabpages = {}, -- record tabpage with vista.nvim
@@ -42,6 +43,18 @@ M.View = {
         { name = "bufhidden", val = "hide" },
     },
 }
+
+M.View = {}
+
+-- Method to initialize or reset M.View.
+function M.View.reset(self)
+    for k, v in pairs(defaultView) do
+        self[k] = v
+    end
+end
+
+-- Initialize M.View with the default values.
+M.View:reset()
 
 ---Find a rogue VistaNvim buffer that might have been spawned by i.e. a session.
 ---@return integer|nil
@@ -281,6 +294,7 @@ function M.destroy()
     M.close()
 
     M._wipe_rogue_buffer()
+    M.View:reset()
 end
 
 return M
