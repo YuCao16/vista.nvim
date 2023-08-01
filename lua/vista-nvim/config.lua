@@ -184,6 +184,9 @@ function M.is_symbol_blacklisted(kind, ft)
     if kind == nil then
         return false
     end
+    if M.filetype_map[ft] == nil then
+        return false
+    end
     return has_value(M.filetype_map[ft].symbol_blacklist, kind)
 end
 
