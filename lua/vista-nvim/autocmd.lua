@@ -16,6 +16,7 @@ local function setup_global_autocmd()
         "InsertLeave",
         "BufWinEnter",
         "BufEnter",
+        "WinEnter",
         "TabEnter",
         "BufWritePost",
         "LspAttach",
