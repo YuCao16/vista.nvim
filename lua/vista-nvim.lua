@@ -31,7 +31,7 @@ local function check_deprecated_field(key)
     end
 
     local new_key = deprecated_config_map[key]
-    utils.echo_warning(
+    utils_basic.echo_warning(
         "config '"
             .. key
             .. "' is deprecated. Please use '"
