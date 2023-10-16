@@ -279,7 +279,7 @@ function M.classify(result)
     for _, v in pairs(keys) do
         new[v] = res[v]
         if view.View.last_ft ~= nil then
-            if utils_basic.has_value(config.filetype_map[view.View.last_ft].type_symbol_blacklist, vim.lsp.protocol.SymbolKind[v]) then
+            if config.is_symbol_blacklisted(vim.lsp.protocol.SymbolKind[v], view.View.last_ft) then
                 new[v].should_folded = true
             end
         end
