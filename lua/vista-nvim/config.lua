@@ -12,6 +12,10 @@ M.auto_close = false
 M.auto_preview = false
 M.disable_max_lines = 10000
 M.disable_max_sizes = 2000000 -- Default 2MB
+M.highlight_flash_duration = 450 -- Flash highlight duration in ms
+M.cache_enabled = true -- Enable state caching for performance
+M.remember_fold_state = true -- Remember fold state between sessions
+M.fold_state_file = vim.fn.stdpath("data") .. "/vista_fold_state.json" -- Fold state storage file
 M.default_provider = "lsp"
 M.theme = "type" -- tree or type
 M.filetype_map = {
@@ -129,6 +133,7 @@ M.symbols = {
 }
 
 M.enable_profile = false
+M.use_icons_provider = true -- Enable automatic icon provider detection (mini.icons, nvim-web-devicons, or builtin)
 
 local function has_value(tab, val)
   for _, value in ipairs(tab) do

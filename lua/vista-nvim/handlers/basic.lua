@@ -7,6 +7,7 @@ local utils_basic = require("vista-nvim.utils.basic")
 local view = require("vista-nvim.view")
 local providers = require("vista-nvim.providers.init")
 local kind = require("vista-nvim.render").kinds_number
+local fold_memory = require("vista-nvim.fold_memory")
 
 local a = vim.api
 
@@ -74,6 +75,10 @@ function M.setup_handler_binding()
 end
 
 local function wipe_state()
+  -- Save fold state before wiping
+  fold_memory.save_current_state()
+  fold_memory.cleanup() -- Clean up old entries
+
   M.state = {
     outline_items = {},
     flattened_outline_items = {},
@@ -81,10 +86,45 @@ local function wipe_state()
     classified_outline_items = {},
     code_win = 0,
   }
+
+  -- Clear caches when wiping state
+  M._state_cache = {
+    outline_items_hash = nil,
+    type_items_hash = nil,
+    flattened_cache = nil,
+    classified_cache = nil,
+  }
+  M._node_index = {
+    by_winline = {},
+    by_line = {},
+  }
+end
+
+-- Cache for computed states to avoid unnecessary recalculations
+M._state_cache = {
+  outline_items_hash = nil,
+  type_items_hash = nil,
+  flattened_cache = nil,
+  classified_cache = nil,
+}
+
+-- Simple hash function for cache validation
+local function hash_items(items)
+  if not items or #items == 0 then return "empty" end
+  -- Create a simple hash based on item count and first/last item properties
+  local first = items[1]
+  local last = items[#items]
+  return string.format("%d_%s_%d_%s_%d",
+    #items,
+    first and first.name or "nil",
+    first and first.line or 0,
+    last and last.name or "nil",
+    last and last.line or 0
+  )
 end
 
 function M._update_lines(ext)
-  ext = false or ext
+  ext = ext or false
   if #vim.lsp.get_active_clients({ bufnr = 0 }) ~= 0 then
     if M.lsp_filepath ~= vim.api.nvim_buf_get_name(0) then
       M.lsp_filepath = vim.api.nvim_buf_get_name(0)
@@ -94,8 +134,81 @@ function M._update_lines(ext)
       end
     end
   end
-  M.state.flattened_outline_items = lsp_parser.flatten(M.state.outline_items)
-  M.state.classified_outline_items = lsp_parser.classify(M.state.type_items)
+
+  -- If ext is true, force clear all caches to ensure full update
+  if ext then
+    M._state_cache.outline_items_hash = nil
+    M._state_cache.type_items_hash = nil
+    M._state_cache.flattened_cache = nil
+    M._state_cache.classified_cache = nil
+    M._node_index.by_winline = {}
+    M._node_index.by_line = {}
+  end
+
+  -- Check cache for flattened_outline_items (if caching enabled)
+  if config.cache_enabled and not ext then
+    local outline_hash = hash_items(M.state.outline_items)
+    if M._state_cache.outline_items_hash ~= outline_hash or not M._state_cache.flattened_cache then
+      M.state.flattened_outline_items = lsp_parser.flatten(M.state.outline_items)
+      M._state_cache.flattened_cache = M.state.flattened_outline_items
+      M._state_cache.outline_items_hash = outline_hash
+      -- Clear tree node index when data changes
+      M._node_index.by_winline = {}
+      M._node_index.by_line = {}
+    else
+      M.state.flattened_outline_items = M._state_cache.flattened_cache
+    end
+
+    -- Check cache for classified_outline_items (but preserve manual fold states)
+    local type_hash = hash_items(M.state.type_items)
+    if M._state_cache.type_items_hash ~= type_hash or not M._state_cache.classified_cache then
+      -- Save current expand states before reclassifying
+      local current_expand_states = {}
+      if M.state.classified_outline_items then
+        for k, v in pairs(M.state.classified_outline_items) do
+          current_expand_states[k] = v.expand
+        end
+      end
+
+      M.state.classified_outline_items = lsp_parser.classify(M.state.type_items)
+
+      -- Restore expand states
+      for k, expand_state in pairs(current_expand_states) do
+        if M.state.classified_outline_items[k] then
+          M.state.classified_outline_items[k].expand = expand_state
+        end
+      end
+
+      M._state_cache.classified_cache = M.state.classified_outline_items
+      M._state_cache.type_items_hash = type_hash
+    else
+      M.state.classified_outline_items = M._state_cache.classified_cache
+    end
+  else
+    -- No caching, always recompute but preserve expand states
+    M.state.flattened_outline_items = lsp_parser.flatten(M.state.outline_items)
+    -- Clear tree node index when data changes
+    M._node_index.by_winline = {}
+    M._node_index.by_line = {}
+
+    -- Save current expand states before reclassifying
+    local current_expand_states = {}
+    if M.state.classified_outline_items then
+      for k, v in pairs(M.state.classified_outline_items) do
+        current_expand_states[k] = v.expand
+      end
+    end
+
+    M.state.classified_outline_items = lsp_parser.classify(M.state.type_items)
+
+    -- Restore expand states
+    for k, expand_state in pairs(current_expand_states) do
+      if M.state.classified_outline_items[k] then
+        M.state.classified_outline_items[k].expand = expand_state
+      end
+    end
+  end
+
   if writer.structure_theme == "type" then
     writer.parse_and_write(view.View.bufnr, M.state.classified_outline_items)
     return
@@ -134,6 +247,18 @@ function M.handler(response)
   M.state.flattened_outline_items = lsp_parser.flatten(items)
   M.state.classified_outline_items = lsp_parser.classify(items_type)
 
+  -- Clear caches when new data arrives
+  M._state_cache.outline_items_hash = nil
+  M._state_cache.type_items_hash = nil
+  M._state_cache.flattened_cache = nil
+  M._state_cache.classified_cache = nil
+  M._node_index.by_winline = {}
+  M._node_index.by_line = {}
+
+  -- Initialize fold memory and restore saved state
+  fold_memory.init()
+  fold_memory.restore_current_state()
+
   if M.current_theme == "type" then
     writer.parse_and_write(view.View.bufnr, M.state.classified_outline_items)
     return
@@ -158,22 +283,57 @@ function M.refresh_handler(response)
   M.state.current_bufnr = vim.fn.bufnr()
   view.View.lsp_bufnr = vim.fn.bufnr()
 
+  -- Restore fold state after refresh
+  fold_memory.restore_current_state()
+
   M._update_lines()
 end
 
 ---------------
 --goto_location
 ---------------
+-- Node index mapping for O(1) lookups
+M._node_index = {
+  by_winline = {},
+  by_line = {},
+}
+
+-- Build index for fast node lookups - for flattened tree items
+local function build_tree_node_index()
+  M._node_index.by_winline = {}
+  M._node_index.by_line = {}
+
+  for i, node in ipairs(M.state.flattened_outline_items or {}) do
+    M._node_index.by_winline[i] = node
+    if node.line then
+      M._node_index.by_line[node.line] = node
+    end
+  end
+end
+
+-- Find node for type mode (different from tree mode)
 local function find_node(data, line)
   for _, node in pairs(data or {}) do
     if node.winline == line then
       return node
     end
   end
+  return nil
 end
 
 function M._current_node()
   local current_line = vim.api.nvim_win_get_cursor(view.get_winnr())[1] - view.View.title_line
+
+  -- Ensure we have the current flattened items
+  if not M.state.flattened_outline_items or #M.state.flattened_outline_items == 0 then
+    return nil
+  end
+
+  -- Build index if needed
+  if not M._node_index.by_winline or not next(M._node_index.by_winline) then
+    build_tree_node_index()
+  end
+
   return M.state.flattened_outline_items[current_line]
 end
 
@@ -245,6 +405,9 @@ end
 -- switch theme
 ---------------
 function M._switch_theme()
+  -- Save current theme's fold state before switching
+  fold_memory.save_current_state()
+
   local current_theme = writer.structure_theme
   if current_theme == "tree" then
     writer.structure_theme = "type"
@@ -253,7 +416,11 @@ function M._switch_theme()
   end
   M.current_theme = writer.structure_theme
 
-  M._update_lines()
+  -- Force update when switching themes
+  M._update_lines(true)
+
+  -- Restore fold state for new theme
+  fold_memory.restore_current_state()
 end
 
 ---------------
@@ -261,16 +428,59 @@ end
 ---------------
 function M._set_folded(folded, move_cursor, node_index)
   local node = M.state.flattened_outline_items[node_index] or M._current_node()
+
+  if not node then
+    return
+  end
+
   local changed = (folded ~= folding.is_folded(node))
 
   if folding.is_foldable(node) and changed then
+    -- Find the corresponding node in outline_items and set folded state there
+    -- This ensures the state persists when flattened_outline_items is regenerated
+    local function set_folded_in_outline_items(items, target_node)
+      for _, item in ipairs(items) do
+        if item.name == target_node.name and
+           item.line == target_node.line and
+           item.kind == target_node.kind then
+          item.folded = folded
+          return true
+        end
+        if item.children and set_folded_in_outline_items(item.children, target_node) then
+          return true
+        end
+      end
+      return false
+    end
+
+    -- Set folded state in the original outline_items
+    if M.state.outline_items then
+      set_folded_in_outline_items(M.state.outline_items, node)
+    end
+
+    -- Also set it in the current flattened node for immediate effect
     node.folded = folded
 
     if move_cursor then
       vim.api.nvim_win_set_cursor(view.get_winnr(), { node_index, 0 })
     end
 
-    M._update_lines()
+    -- Force regenerate flattened items and update display
+    local lsp_parser = require("vista-nvim.parsers.nvim_lsp")
+    M.state.flattened_outline_items = lsp_parser.flatten(M.state.outline_items)
+
+    -- Clear caches to force complete refresh
+    if M._state_cache then
+      M._state_cache.outline_items_hash = nil
+      M._state_cache.flattened_cache = nil
+    end
+    if M._node_index then
+      M._node_index.by_winline = {}
+      M._node_index.by_line = {}
+    end
+
+    -- Force update the display
+    M._update_lines(true)
   elseif node.parent then
     local parent_node = M.state.flattened_outline_items[node.parent.line_in_outline]
 
@@ -290,18 +500,109 @@ end
 
 function M.toggle_fold_tree()
   local node = M._current_node()
+  if not node then
+    return
+  end
+
   if folding.is_foldable(node, M.current_theme) then
-    if folding.is_folded(node) then
-      M._set_folded(false)
-    else
-      M._set_folded(true)
+    -- Toggle the folded state
+    local new_folded = not folding.is_folded(node)
+
+    -- Find and update the node in the original outline_items
+    local function set_folded_in_outline(items, target_node)
+      for _, item in ipairs(items) do
+        if item.name == target_node.name and
+           item.line == target_node.line and
+           item.kind == target_node.kind then
+          item.folded = new_folded
+          return true
+        end
+        if item.children and set_folded_in_outline(item.children, target_node) then
+          return true
+        end
+      end
+      return false
     end
+
+    if M.state.outline_items then
+      set_folded_in_outline(M.state.outline_items, node)
+    end
+
+    -- Regenerate flattened items
+    local lsp_parser = require("vista-nvim.parsers.nvim_lsp")
+    M.state.flattened_outline_items = lsp_parser.flatten(M.state.outline_items)
+
+    -- Force re-render
+    if view.View.bufnr and vim.api.nvim_buf_is_valid(view.View.bufnr) then
+      writer.parse_and_write(view.View.bufnr, M.state.flattened_outline_items)
+    end
+
+    -- Save fold state after toggle
+    fold_memory.save_current_state()
   end
 end
 
 function M.toggle_fold_type()
+  local curline = vim.api.nvim_win_get_cursor(0)[1]  -- This is 1-based
+  local node = nil
+
+  -- Find node in classified_outline_items structure
+  for _, nodes in pairs(M.state.classified_outline_items) do
+    if nodes.winline == curline then
+      node = nodes
+      break
+    end
+    -- Check if we're on an individual item (not a category header)
+    for _, item in pairs(nodes.data or {}) do
+      if item.winline == curline then
+        return -- Don't toggle individual items, only category headers
+      end
+    end
+  end
+
+  if not node then
+    return
+  end
+
+  -- Toggle the expand state
+  node.expand = not node.expand
+
+  -- Force immediate re-render
+  if view.View.bufnr and vim.api.nvim_buf_is_valid(view.View.bufnr) then
+    writer.parse_and_write(view.View.bufnr, M.state.classified_outline_items)
+  end
+
+  -- Save fold state after toggle
+  fold_memory.save_current_state()
+
+  -- Keep cursor on the same category line (the winline may have changed after re-render)
+  for _, nodes in pairs(M.state.classified_outline_items) do
+    if nodes == node and nodes.winline and nodes.winline > 0 then
+      vim.api.nvim_win_set_cursor(view.get_winnr(), { nodes.winline, 0 })
+      break
+    end
+  end
+end
+
+-- Old implementation for reference (to be removed)
+function M.toggle_fold_type_old()
   local curline = vim.api.nvim_win_get_cursor(0)[1] - 1
-  local node = find_node(M.state.classified_outline_items, curline)
+  local node = nil
+
+  -- Find node in classified_outline_items structure
+  for _, nodes in pairs(M.state.classified_outline_items) do
+    if nodes.winline == curline then
+      node = nodes
+      break
+    end
+    -- Also check within node data for individual items
+    for _, item in pairs(nodes.data or {}) do
+      if item.winline == curline then
+        return -- Don't toggle individual items, only category headers
+      end
+    end
+  end
+
   if not node then
     return
   end
@@ -369,6 +670,9 @@ function M.toggle_fold_type()
   end
 
   increase_or_reduce(node.winline, #node.data)
+
+  -- Save fold state after toggle
+  fold_memory.save_current_state()
 end
 
 function M._set_all_folded(folded, nodes)
@@ -382,9 +686,35 @@ function M._set_all_folded(folded, nodes)
   end
 end
 
+-- Set all items folded for type mode
+function M._set_all_folded_type(expand)
+  for _, node in pairs(M.state.classified_outline_items) do
+    node.expand = expand
+  end
+end
+
 function M.set_all_folded(folded, nodes)
-  M._set_all_folded(folded, nodes)
-  M._update_lines()
+  if M.current_theme == "type" then
+    -- For type mode, folded=true means expand=false (collapsed)
+    M._set_all_folded_type(not folded)
+    -- Force regenerate the display
+    if view.View.bufnr and vim.api.nvim_buf_is_valid(view.View.bufnr) then
+      writer.parse_and_write(view.View.bufnr, M.state.classified_outline_items)
+    end
+  else
+    -- For tree mode
+    M._set_all_folded(folded, nodes or M.state.outline_items)
+    -- Regenerate flattened items after fold change
+    local lsp_parser = require("vista-nvim.parsers.nvim_lsp")
+    M.state.flattened_outline_items = lsp_parser.flatten(M.state.outline_items)
+    -- Force update
+    if view.View.bufnr and vim.api.nvim_buf_is_valid(view.View.bufnr) then
+      writer.parse_and_write(view.View.bufnr, M.state.flattened_outline_items)
+    end
+  end
+
+  -- Save fold state after setting all
+  fold_memory.save_current_state()
 end
 
 function M.is_empty_line()

@@ -12,12 +12,21 @@ Vista.nvim provides a tree-like view of symbols in your code, supporting LSP and
 - 🔧 **Highly Configurable**: Customize appearance, behavior, and keybindings
 - 🎯 **Symbol Filtering**: Blacklist unwanted symbols per filetype
 - 📏 **Flexible Layout**: Position on left or right, adjustable width
+- 🎨 **Icon Support**: Automatic detection and support for mini.icons, nvim-web-devicons, or builtin icons
 - ⚡ **Performance**: Optimized for large files with size/line limits
 
 ## Requirements
 
 - Neovim >= 0.5.0
 - LSP server configured (for LSP support)
+
+## Optional Dependencies
+
+For enhanced icon support, install one of these plugins:
+- **[mini.icons](https://github.com/echasnovski/mini.icons)** - Recommended, modern icon provider
+- **[nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons)** - Popular icon provider
+
+If none are installed, vista.nvim will use builtin icons.
 
 ## Installation
 
@@ -83,6 +92,9 @@ require("vista-nvim").setup({
   default_provider = "lsp",       -- Default provider: "lsp" or "markdown"
   lsp_blacklist = { "pyright", "null-ls" }, -- Blacklisted LSP clients
 
+  -- Icon settings
+  use_icons_provider = true,      -- Auto-detect and use mini.icons, nvim-web-devicons, or builtin
+
   -- Keybindings
   disable_default_keybindings = false,
   bindings = {
@@ -145,7 +157,9 @@ Vista.nvim provides several commands to control the symbol viewer:
 | `:VistaNvimToggle` | Toggle the vista window |
 | `:VistaNvimFocus` | Focus the vista window |
 | `:VistaNvimResize <width>` | Resize the vista window |
-| `:VistaNvim <subcommand>` | Run various subcommands |
+| `:VistaNvim tree` | Switch to tree theme |
+| `:VistaNvim type` | Switch to type theme |
+| `:VistaNvim status` | Show current status and icon provider info |
 
 ## Default Keybindings
 
@@ -238,6 +252,93 @@ require("vista-nvim").resize(40)
 
 -- Check if vista is open
 local is_open = require("vista-nvim").is_open()
+```
+
+## Icon Providers
+
+Vista.nvim automatically detects and uses available icon providers for better visual experience:
+
+### Priority Order
+1. **mini.icons** (highest priority, recommended)
+2. **nvim-web-devicons** (fallback)
+3. **Builtin icons** (ultimate fallback)
+
+### Using mini.icons (Recommended)
+
+Install mini.icons for the best icon experience:
+
+```lua
+-- With lazy.nvim
+{
+  "echasnovski/mini.icons",
+  config = function()
+    require("mini.icons").setup()
+  end,
+}
+```
+
+Vista.nvim will automatically:
+- Detect mini.icons
+- Initialize it if needed
+- Use LSP kind icons from mini.icons
+- Apply proper highlighting
+
+### Using nvim-web-devicons
+
+If you prefer nvim-web-devicons:
+
+```lua
+-- With lazy.nvim
+{
+  "nvim-tree/nvim-web-devicons",
+  config = function()
+    require("nvim-web-devicons").setup()
+  end,
+}
+```
+
+### Disabling Icon Providers
+
+To use only builtin icons:
+
+```lua
+require("vista-nvim").setup({
+  use_icons_provider = false,
+})
+```
+
+### Custom Icons
+
+You can still override icons manually in the configuration:
+
+```lua
+require("vista-nvim").setup({
+  symbols = {
+    Function = { icon = "󰊕", hl = "@function" },
+    Class = { icon = "󰠱", hl = "@type" },
+    -- ... other custom icons
+  },
+})
+```
+
+### Checking Current Icon Provider
+
+To see which icon provider is currently being used:
+
+```vim
+:VistaNvim status
+```
+
+Or programmatically in Lua:
+
+```lua
+-- Get status information
+local status = require("vista-nvim").get_status()
+print("Icon provider:", status.icon_provider)
+print("Using icons:", status.use_icons_provider)
+
+-- Or show detailed status
+require("vista-nvim").status()
 ```
 
 ## Troubleshooting

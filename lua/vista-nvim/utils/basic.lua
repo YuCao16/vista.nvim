@@ -56,7 +56,8 @@ end
 
 M.flash_highlight = function(bufnr, lnum)
   local hl_group = "VistaFlashLine"
-  local durationMs = 450
+  local config = require("vista-nvim.config")
+  local durationMs = config.highlight_flash_duration or 450
   local ns = vim.api.nvim_buf_add_highlight(bufnr, 0, hl_group, lnum - 1, 0, -1)
   local remove_highlight = function()
     vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)

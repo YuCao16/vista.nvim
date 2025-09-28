@@ -9,6 +9,7 @@ local writer = require("vista-nvim.writer")
 local utils_basic = require("vista-nvim.utils.basic")
 local highlight = require("vista-nvim.highlight")
 local config = require("vista-nvim.config")
+local fold_memory = require("vista-nvim.fold_memory")
 
 local M = { setup_called = false, _internal_setup_called = false }
 -- data storage with proper cleanup
@@ -62,11 +63,24 @@ function M.setup(opts)
 end
 
 function M._internal_setup()
+  -- Setup icon provider first if enabled
+  if config.use_icons_provider then
+    local ok, icons = pcall(require, "vista-nvim.icons")
+    if ok then
+      icons.setup()
+      -- Don't override config.symbols - just let the icon system handle it dynamically
+      -- This preserves the user's configuration while still allowing icon provider fallback
+    end
+  end
+
   highlight.setup()
   view.setup()
   bindings.setup()
   autocmd.setup()
   writer.setup()
+
+  -- Initialize fold memory
+  fold_memory.init()
 
   if M.open_on_start then
     M._internal_open()
@@ -234,6 +248,23 @@ function M._setup_buffer_cleanup(bufnr)
     once = true,
   })
   table.insert(M._autocmd_ids, id)
+end
+
+-- Get status information about vista.nvim
+function M.get_status()
+  local icons = require("vista-nvim.icons")
+  return {
+    icon_provider = icons.get_provider_name(),
+    has_icon_provider = icons.has_icon_provider(),
+    use_icons_provider = config.use_icons_provider,
+    current_theme = writer.structure_theme,
+    is_open = view.is_win_open(),
+  }
+end
+
+-- Print status information
+function M.status()
+  require("vista-nvim.commands").load_command("status")
 end
 
 return M

@@ -139,9 +139,6 @@ local function sort_result(result)
 
   return result
 end
-M.response = {}
-M.response_result = {}
-M.all_result = {}
 
 --- Extract valid results from LSP response
 ---@param response table The result from buf_request_all
@@ -165,9 +162,8 @@ local function extract_lsp_results(response)
       goto continue
     end
 
-    -- Store response for debugging
-    M.response = client_response
-    M.response_result = result
+    -- Store response for potential debugging
+    -- Can be enabled if needed for troubleshooting
 
     for _, value in pairs(result) do
       table.insert(all_results, value)
@@ -191,7 +187,7 @@ function M.parse(response, parse_for_type)
     return {}
   end
 
-  M.all_result = all_results
+  -- Store for type view processing
 
   -- For type view, return raw results without hierarchical parsing
   if parse_for_type then
@@ -321,53 +317,89 @@ end
 function M.get_lines_type(classified_outline_items)
   local lines = {}
   local hi = {}
-  for k, v in pairs(classified_outline_items) do
-    if v.should_folded then
-      local scope = {}
-      local indent_with_icon = "  " .. config.fold_markers[2]
-      table.insert(lines, indent_with_icon .. " " .. kind[k][1])
-      scope["VistaConnector"] = { 0, #indent_with_icon }
-      scope["VistaOutline" .. kind[k][1]] = { #indent_with_icon, -1 }
-      table.insert(hi, scope)
-      v.winline = #lines
-      for j, node in pairs(v.data) do
-        node.hi_scope = {}
-        local indent = j == #v.data and "  └" .. " " or "  │" .. " "
-        node.name = indent .. kind[node.kind][2] .. node.name
-        node.hi_scope["VistaIndent"] = { 0, #indent }
-        node.hi_scope["VistaOutline" .. kind[node.kind][1]] =
-          { #indent, #indent + #kind[node.kind][2] }
-        node.winline = #lines
-      end
-      table.insert(lines, "")
-      table.insert(hi, {})
-      v.should_folded = false
-      v.expand = false
-    else
-      local scope = {}
-      local indent_with_icon = "  " .. config.fold_markers[1]
-      table.insert(lines, indent_with_icon .. " " .. kind[k][1])
-      scope["VistaConnector"] = { 0, #indent_with_icon }
-      scope["VistaOutline" .. kind[k][1]] = { #indent_with_icon, -1 }
-      table.insert(hi, scope)
-      v.winline = #lines
-      for j, node in pairs(v.data) do
-        node.hi_scope = {}
-        local indent = j == #v.data and "  └" .. " " or "  │" .. " "
-        node.name = indent .. kind[node.kind][2] .. node.name
-        table.insert(lines, node.name)
-        node.hi_scope["VistaIndent"] = { 0, #indent }
-        node.hi_scope["VistaOutline" .. kind[node.kind][1]] =
-          { #indent, #indent + #kind[node.kind][2] }
-        table.insert(hi, node.hi_scope)
-        node.winline = #lines
-      end
-      table.insert(lines, "")
-      table.insert(hi, {})
-    end
+  local view = require("vista-nvim.view")
+
+  -- Calculate title offset (if title is shown, content starts at line 2)
+  local title_offset = config.show_title and view.View.title_line or 0
+
+  -- Sort keys to ensure consistent ordering
+  local sorted_keys = {}
+  for k, _ in pairs(classified_outline_items) do
+    table.insert(sorted_keys, k)
   end
-  table.remove(lines) -- remove the blank line after last line
-  table.remove(hi)
+  table.sort(sorted_keys)
+
+  for i, k in ipairs(sorted_keys) do
+    local v = classified_outline_items[k]
+    local scope = {}
+
+    -- Determine if this category is expanded or collapsed
+    local is_expanded = v.expand ~= false  -- Default to expanded if not set
+
+    -- Create the category header line with fold marker and category name
+    local fold_marker = is_expanded and config.fold_markers[2] or config.fold_markers[1]
+    local indent_with_icon = "  " .. fold_marker
+    local kind_name = vim.lsp.protocol.SymbolKind[k] or kind[k][1]
+    local display_name = indent_with_icon .. " " .. kind_name
+
+    -- Add the category line
+    table.insert(lines, display_name)
+    scope["VistaConnector"] = { 0, #indent_with_icon }
+    -- Use the sanitized kind name for highlight group (remove spaces and special chars)
+    local hl_kind_name = kind_name:gsub("[^%w]", "")
+    scope["VistaOutline" .. hl_kind_name] = { #indent_with_icon, -1 }
+    table.insert(hi, scope)
+    -- Account for title offset when setting winline
+    v.winline = #lines + title_offset
+
+    -- If expanded, show the items
+    if is_expanded then
+      for j, node in ipairs(v.data) do
+        node.hi_scope = {}
+        local indent = j == #v.data and "  └" .. " " or "  │" .. " "
+
+        -- Get icon for this node's kind
+        local node_icon = ""
+        if node.icon then
+          node_icon = node.icon .. " "
+        elseif kind[node.kind] then
+          node_icon = kind[node.kind][2]
+        end
+
+        -- Use the node's original name without any modifications
+        local display_name = indent .. node_icon .. (node.name or "")
+        table.insert(lines, display_name)
+
+        -- Set highlight scopes
+        node.hi_scope["VistaIndent"] = { 0, #indent }
+        local icon_end = #indent + vim.fn.strdisplaywidth(node_icon)
+        -- Sanitize the kind name for use in highlight group
+        local node_kind_name = vim.lsp.protocol.SymbolKind[node.kind] or "Unknown"
+        local hl_node_kind = node_kind_name:gsub("[^%w]", "")
+        node.hi_scope["VistaOutline" .. hl_node_kind] =
+          { #indent, icon_end }
+        table.insert(hi, node.hi_scope)
+        -- Account for title offset when setting winline
+        node.winline = #lines + title_offset
+      end
+    else
+      -- If collapsed, mark items as not visible
+      for _, node in pairs(v.data) do
+        node.winline = -1
+      end
+    end
+
+    -- Add blank line after each category for separation
+    table.insert(lines, "")
+    table.insert(hi, {})
+  end
+
+  -- Remove the last blank line
+  if #lines > 0 and lines[#lines] == "" then
+    table.remove(lines)
+    table.remove(hi)
+  end
+
   return lines, hi
 end
 
@@ -451,7 +483,29 @@ function M.get_lines_tree(flattened_outline_items)
 
     local hl_start = #string_prefix
     local hl_end = #string_prefix + #node.icon
-    local hl_type = config.symbols[render.kinds[node.kind]].hl
+
+    -- Get highlight group, with support for icon providers
+    local hl_type
+    if config.use_icons_provider then
+      local ok, icons = pcall(require, "vista-nvim.icons")
+      if ok then
+        local _, hl = icons.get_icon(node.kind)
+        if hl and hl ~= "" and vim.trim(hl) ~= "" then
+          hl_type = hl
+        end
+      end
+    end
+
+    -- Fallback to config symbols if no icon provider or if it didn't return a highlight
+    if not hl_type then
+      local kind_name = render.kinds[node.kind]
+      if kind_name and config.symbols[kind_name] then
+        hl_type = config.symbols[kind_name].hl
+      else
+        hl_type = "@type" -- Default highlight
+      end
+    end
+
     table.insert(hl_info, { node_line, hl_start, hl_end, hl_type })
 
     node.prefix_length = #string_prefix + #node.icon + 1

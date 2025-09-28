@@ -74,15 +74,30 @@ M.kinds_number = {
 function M.icon_from_kind(kind)
   local symbols = config.symbols
 
+  -- First check if we should use icon provider
+  if config.use_icons_provider then
+    local ok, icons = pcall(require, "vista-nvim.icons")
+    if ok then
+      local icon, _ = icons.get_icon(kind)
+      if icon and icon ~= "" and vim.trim(icon) ~= "" then
+        return icon
+      end
+    end
+  end
+
+  -- Fallback to config symbols
   if type(kind) == "string" then
-    return symbols[kind].icon
+    return symbols[kind] and symbols[kind].icon or "○"
   end
 
   -- If the kind is higher than the available ones then default to 'Object'
   if kind > #M.kinds then
     kind = 19
   end
-  return symbols[M.kinds[kind]].icon
+
+  local kind_name = M.kinds[kind]
+  local symbol_config = symbols[kind_name]
+  return symbol_config and symbol_config.icon or "○"
 end
 
 -----------
