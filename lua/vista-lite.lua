@@ -30,10 +30,10 @@ local config = {
     enable = true,
     style = 'tree',  -- 'tree' for tree-style, 'simple' for just spaces
     markers = {
-      vertical = '│',
-      corner = '└',
-      edge = '├',
-      horizontal = '─',
+      vertical = '│',  -- You can also try: '┃', '▏', '▎', '▍', '▌', '▋', '▊', '▉'
+      corner = '└',    -- You can also try: '┗', '╰', '╘', '└'
+      edge = '┣',      -- Thicker edge (not used currently)
+      horizontal = '━', -- Thicker horizontal (not used currently)
     },
   },
   icons = {
@@ -460,26 +460,23 @@ function apply_highlights()
         api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, pos.fold[1], pos.fold[2])
       end
 
-      -- Highlight icons and names based on their kind
+      -- Highlight icons based on their kind, names use normal color
       if metadata.kind then
         local hl_group = kind_highlights[metadata.kind] or 'Identifier'
 
-        -- Use the same color for both icon and name
+        -- Only color the icon
         if pos.icon then
           api.nvim_buf_add_highlight(state.bufnr, ns, hl_group, line_num, pos.icon[1], pos.icon[2])
         end
 
-        if pos.name then
-          api.nvim_buf_add_highlight(state.bufnr, ns, hl_group, line_num, pos.name[1], -1)
-        end
+        -- Names use Normal color (no highlight = normal color)
+        -- No need to add highlight for names
       else
         -- Fallback for items without kind
         if pos.icon then
           api.nvim_buf_add_highlight(state.bufnr, ns, 'Identifier', line_num, pos.icon[1], pos.icon[2])
         end
-        if pos.name then
-          api.nvim_buf_add_highlight(state.bufnr, ns, 'Identifier', line_num, pos.name[1], -1)
-        end
+        -- Names use Normal color (no highlight)
       end
     end
   end
