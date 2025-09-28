@@ -25,6 +25,17 @@ local config = {
   position = 'right',  -- Default to right side
   auto_close = false,
   show_title = true,
+  show_indent_guides = true,  -- Enable/disable indent guides
+  indent_guides = {
+    enable = true,
+    style = 'tree',  -- 'tree' for tree-style, 'simple' for just spaces
+    markers = {
+      vertical = '│',
+      corner = '└',
+      edge = '├',
+      horizontal = '─',
+    },
+  },
   icons = {
     provider = 'mini', -- 'mini', 'builtin', 'none'
   },
@@ -212,42 +223,61 @@ local function render_tree(symbols, lines, indent, parent_folded, is_last_child)
     local fold_icon = has_children and (is_folded and '▸' or '▾') or ' '
     local is_last = (i == #symbols)
 
-    -- Build indent guides
-    local indent_str = ''
-    for level = 1, indent do
-      if is_last_child[level] then
-        indent_str = indent_str .. '  '  -- No line for completed branches
-      else
-        indent_str = indent_str .. '│ '  -- Vertical line for continuing branches
+    local line_parts = {}
+    local part_positions = {}  -- Track start/end positions of each part
+
+    -- Build indent with guides if enabled
+    if config.indent_guides.enable and config.indent_guides.style == 'tree' and indent > 0 then
+      local indent_str = ''
+      for level = 1, indent do
+        if is_last_child[level] then
+          indent_str = indent_str .. '  '  -- No line for completed branches
+        else
+          indent_str = indent_str .. config.indent_guides.markers.vertical .. ' '  -- Vertical line
+        end
       end
+
+      -- Add branch connector
+      local branch = is_last and
+        (config.indent_guides.markers.corner .. config.indent_guides.markers.horizontal) or
+        (config.indent_guides.markers.edge .. config.indent_guides.markers.horizontal)
+
+      table.insert(line_parts, indent_str)
+      part_positions.indent = {0, vim.fn.strwidth(indent_str)}
+
+      table.insert(line_parts, branch)
+      part_positions.branch = {part_positions.indent[2], part_positions.indent[2] + vim.fn.strwidth(branch)}
+    else
+      -- Simple indentation without guides
+      local indent_str = string.rep('  ', indent)
+      table.insert(line_parts, indent_str)
+      part_positions.indent = {0, vim.fn.strwidth(indent_str)}
     end
 
-    -- Add the branch connector
-    local branch = ''
-    if indent > 0 then
-      branch = is_last and '└─' or '├─'
-    end
+    -- Add fold icon
+    table.insert(line_parts, fold_icon .. ' ')
+    local fold_start = part_positions.branch and part_positions.branch[2] or part_positions.indent[2]
+    part_positions.fold = {fold_start, fold_start + vim.fn.strwidth(fold_icon)}
 
-    local line = indent_str .. branch .. fold_icon .. ' ' ..
-                 get_icon(symbol.kind) .. ' ' .. symbol.name
+    -- Add icon
+    local icon = get_icon(symbol.kind)
+    table.insert(line_parts, icon .. ' ')
+    part_positions.icon = {part_positions.fold[2] + 1, part_positions.fold[2] + 1 + vim.fn.strwidth(icon)}
+
+    -- Add name
+    table.insert(line_parts, symbol.name)
+    part_positions.name = {part_positions.icon[2] + 1, -1}
+
+    local line = table.concat(line_parts)
     table.insert(lines, line)
 
-    -- Store line metadata for highlighting
+    -- Store line metadata for highlighting with correct positions
     local line_num = #lines + state.title_line - 1
-    local prefix_len = vim.fn.strwidth(indent_str .. branch)
     state.line_metadata[line_num] = {
       kind = symbol.kind,
       has_children = has_children,
       indent = indent,
-      indent_guide_start = 0,
-      indent_guide_end = vim.fn.strwidth(indent_str),
-      branch_start = vim.fn.strwidth(indent_str),
-      branch_end = prefix_len,
-      fold_start = prefix_len,
-      fold_end = prefix_len + 1,
-      icon_start = prefix_len + 2,
-      icon_end = prefix_len + 3,
-      name_start = prefix_len + 4 + vim.fn.strwidth(get_icon(symbol.kind)),
+      positions = part_positions,  -- Store all part positions
     }
 
     -- Store symbol info for navigation
@@ -412,29 +442,31 @@ function apply_highlights()
       -- Highlight category headers
       api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, metadata.fold_start, metadata.fold_end)
       api.nvim_buf_add_highlight(state.bufnr, ns, 'Type', line_num, metadata.name_start, -1)
-    else
+    elseif metadata.positions then
+      local pos = metadata.positions
+
       -- Highlight indent guides and branches
-      if metadata.indent_guide_end and metadata.indent_guide_end > 0 then
-        api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, metadata.indent_guide_start, metadata.indent_guide_end)
+      if pos.indent and config.indent_guides.enable then
+        api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, pos.indent[1], pos.indent[2])
       end
-      if metadata.branch_start and metadata.branch_end and metadata.branch_end > metadata.branch_start then
-        api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, metadata.branch_start, metadata.branch_end)
+      if pos.branch and config.indent_guides.enable then
+        api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, pos.branch[1], pos.branch[2])
       end
 
       -- Highlight fold icons
-      if metadata.has_children then
-        api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, metadata.fold_start, metadata.fold_end)
+      if metadata.has_children and pos.fold then
+        api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, pos.fold[1], pos.fold[2])
       end
 
-      -- Highlight icons (use a special color for icons)
-      if metadata.icon_start and metadata.icon_end then
-        api.nvim_buf_add_highlight(state.bufnr, ns, 'Special', line_num, metadata.icon_start, metadata.icon_end + 1)
+      -- Highlight icons
+      if pos.icon then
+        api.nvim_buf_add_highlight(state.bufnr, ns, 'Special', line_num, pos.icon[1], pos.icon[2])
       end
 
       -- Highlight symbol names based on their kind
-      if metadata.kind and metadata.name_start then
+      if metadata.kind and pos.name then
         local hl_group = kind_highlights[metadata.kind] or 'Identifier'
-        api.nvim_buf_add_highlight(state.bufnr, ns, hl_group, line_num, metadata.name_start, -1)
+        api.nvim_buf_add_highlight(state.bufnr, ns, hl_group, line_num, pos.name[1], -1)
       end
     end
   end
