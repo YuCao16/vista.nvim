@@ -30,8 +30,8 @@ local config = {
     enable = true,
     style = 'tree',  -- 'tree' for tree-style, 'simple' for just spaces
     markers = {
-      vertical = '│',  -- You can also try: '┃', '▏', '▎', '▍', '▌', '▋', '▊', '▉'
-      corner = '└',    -- You can also try: '┗', '╰', '╘', '└'
+      vertical = '┃',  -- Default to thicker line
+      corner = '┗',    -- Default to thicker corner
       edge = '┣',      -- Thicker edge (not used currently)
       horizontal = '━', -- Thicker horizontal (not used currently)
     },
@@ -260,13 +260,20 @@ local function render_tree(symbols, lines, indent, parent_folded, is_last_child)
 
     -- Add icon
     local icon = get_icon(symbol.kind)
+    local icon_width = vim.fn.strwidth(icon)
+
+    -- Calculate position before adding icon to line_parts
+    local current_pos = vim.fn.strwidth(table.concat(line_parts))
     table.insert(line_parts, icon .. ' ')
-    local current_pos = vim.fn.strwidth(table.concat(line_parts)) - vim.fn.strwidth(icon .. ' ')
-    part_positions.icon = {current_pos, current_pos + vim.fn.strwidth(icon)}
+
+    -- Only store icon position if icon exists and has width
+    if icon_width > 0 then
+      part_positions.icon = {current_pos, current_pos + icon_width}
+    end
 
     -- Add name
     table.insert(line_parts, symbol.name)
-    part_positions.name = {current_pos + vim.fn.strwidth(icon) + 1, -1}
+    part_positions.name = {current_pos + icon_width + 1, -1}
 
     local line = table.concat(line_parts)
     table.insert(lines, line)

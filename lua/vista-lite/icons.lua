@@ -107,17 +107,21 @@ local builtin_icons = {
 function M.get(kind)
   -- Try mini.icons first
   local icon = get_mini_icon(kind)
-  if icon then
+  if icon and icon ~= '' then
     return icon
   end
 
   -- Fallback to builtin
   local kind_name = kind_names[kind]
   if kind_name then
-    return builtin_icons[kind_name] or '○'
+    local builtin = builtin_icons[kind_name]
+    if builtin and builtin ~= '' then
+      return builtin
+    end
   end
 
-  return '○'
+  -- For unknown kinds, return appropriate default based on common patterns
+  return ' '  -- Return space for better alignment when no icon available
 end
 
 -- Check if mini.icons is available
