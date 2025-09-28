@@ -22,7 +22,7 @@ local state = {
 -- Configuration
 local config = {
   width = 30,
-  position = 'left',
+  position = 'right',  -- Default to right side
   auto_close = false,
   show_title = true,
   icons = {
