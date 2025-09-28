@@ -229,7 +229,7 @@ local function render_tree(symbols, lines, indent, parent_folded, is_last_child)
     -- Build indent with guides if enabled
     if config.indent_guides.enable and config.indent_guides.style == 'tree' and indent > 0 then
       local indent_str = ''
-      for level = 1, indent do
+      for level = 1, indent - 1 do
         if is_last_child[level] then
           indent_str = indent_str .. '  '  -- No line for completed branches
         else
@@ -237,16 +237,11 @@ local function render_tree(symbols, lines, indent, parent_folded, is_last_child)
         end
       end
 
-      -- Add branch connector
-      local branch = is_last and
-        (config.indent_guides.markers.corner .. config.indent_guides.markers.horizontal) or
-        (config.indent_guides.markers.edge .. config.indent_guides.markers.horizontal)
+      -- For the current level, always use vertical line
+      indent_str = indent_str .. config.indent_guides.markers.vertical .. ' '
 
       table.insert(line_parts, indent_str)
       part_positions.indent = {0, vim.fn.strwidth(indent_str)}
-
-      table.insert(line_parts, branch)
-      part_positions.branch = {part_positions.indent[2], part_positions.indent[2] + vim.fn.strwidth(branch)}
     else
       -- Simple indentation without guides
       local indent_str = string.rep('  ', indent)
@@ -256,7 +251,7 @@ local function render_tree(symbols, lines, indent, parent_folded, is_last_child)
 
     -- Add fold icon
     table.insert(line_parts, fold_icon .. ' ')
-    local fold_start = part_positions.branch and part_positions.branch[2] or part_positions.indent[2]
+    local fold_start = part_positions.indent[2]
     part_positions.fold = {fold_start, fold_start + vim.fn.strwidth(fold_icon)}
 
     -- Add icon
@@ -453,12 +448,9 @@ function apply_highlights()
     elseif metadata.positions then
       local pos = metadata.positions
 
-      -- Highlight indent guides and branches
+      -- Highlight indent guides
       if pos.indent and config.indent_guides.enable then
         api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, pos.indent[1], pos.indent[2])
-      end
-      if pos.branch and config.indent_guides.enable then
-        api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, pos.branch[1], pos.branch[2])
       end
 
       -- Highlight fold icons
