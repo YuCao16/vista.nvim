@@ -466,15 +466,26 @@ function apply_highlights()
         api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, pos.fold[1], pos.fold[2])
       end
 
-      -- Highlight icons
-      if pos.icon then
-        api.nvim_buf_add_highlight(state.bufnr, ns, 'Special', line_num, pos.icon[1], pos.icon[2])
-      end
-
-      -- Highlight symbol names based on their kind
-      if metadata.kind and pos.name then
+      -- Highlight icons and names based on their kind
+      if metadata.kind then
         local hl_group = kind_highlights[metadata.kind] or 'Identifier'
-        api.nvim_buf_add_highlight(state.bufnr, ns, hl_group, line_num, pos.name[1], -1)
+
+        -- Use the same color for both icon and name
+        if pos.icon then
+          api.nvim_buf_add_highlight(state.bufnr, ns, hl_group, line_num, pos.icon[1], pos.icon[2])
+        end
+
+        if pos.name then
+          api.nvim_buf_add_highlight(state.bufnr, ns, hl_group, line_num, pos.name[1], -1)
+        end
+      else
+        -- Fallback for items without kind
+        if pos.icon then
+          api.nvim_buf_add_highlight(state.bufnr, ns, 'Identifier', line_num, pos.icon[1], pos.icon[2])
+        end
+        if pos.name then
+          api.nvim_buf_add_highlight(state.bufnr, ns, 'Identifier', line_num, pos.name[1], -1)
+        end
       end
     end
   end
@@ -690,8 +701,16 @@ function M.close()
   end
 
   if state.winnr and api.nvim_win_is_valid(state.winnr) then
-    api.nvim_win_close(state.winnr, true)
-    state.winnr = nil
+    -- Check if this is the last window
+    local win_count = #api.nvim_list_wins()
+    if win_count == 1 then
+      -- If it's the last window, just quit vim
+      vim.cmd('quit')
+    else
+      -- Otherwise close the vista window
+      api.nvim_win_close(state.winnr, true)
+      state.winnr = nil
+    end
   end
 end
 
