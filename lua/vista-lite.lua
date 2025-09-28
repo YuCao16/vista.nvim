@@ -16,6 +16,7 @@ local state = {
   source_bufnr = nil,  -- Source file buffer
   source_winnr = nil,  -- Source file window
   title_line = 1, -- 0 or 1 depending on config
+  line_metadata = {}, -- Metadata for each line for highlighting
 }
 
 -- Configuration
@@ -116,8 +117,10 @@ local function create_window()
   end
 
   local width = get_window_width()
-  local cmd = string.format('noautocmd %s %d vsplit',
-    config.position == 'left' and 'leftabove' or 'rightbelow', width)
+  -- For vsplit: 'topleft' puts window on left, 'botright' puts window on right
+  local position_cmd = config.position == 'left' and 'topleft' or 'botright'
+  local cmd = string.format('noautocmd %s vertical %d split',
+    position_cmd, width)
 
   vim.cmd(cmd)
   state.winnr = api.nvim_get_current_win()
@@ -211,6 +214,19 @@ local function render_tree(symbols, lines, indent, parent_folded)
                  get_icon(symbol.kind) .. ' ' .. symbol.name
     table.insert(lines, line)
 
+    -- Store line metadata for highlighting
+    local line_num = #lines + state.title_line - 1
+    state.line_metadata[line_num] = {
+      kind = symbol.kind,
+      has_children = has_children,
+      indent = indent,
+      fold_start = indent * 2,
+      fold_end = indent * 2 + 1,
+      icon_start = indent * 2 + 2,
+      icon_end = indent * 2 + 3,
+      name_start = indent * 2 + 4 + vim.fn.strwidth(get_icon(symbol.kind)),
+    }
+
     -- Store symbol info for navigation
     symbol.display_line = #lines + state.title_line
 
@@ -246,12 +262,34 @@ local function render_type(symbols)
     local is_folded = state.folded['type:' .. kind_name]
     local fold_icon = is_folded and '▸' or '▾'
 
-    table.insert(lines, fold_icon .. ' ' .. kind_name .. ' (' .. #syms .. ')')
+    local header_line = fold_icon .. ' ' .. kind_name .. ' (' .. #syms .. ')'
+    table.insert(lines, header_line)
+
+    -- Store metadata for category header
+    local line_num = #lines + state.title_line - 1
+    state.line_metadata[line_num] = {
+      is_category = true,
+      kind_name = kind_name,
+      fold_start = 0,
+      fold_end = 1,
+      name_start = 2,
+    }
 
     if not is_folded then
       for _, symbol in ipairs(syms) do
         local line = '    ' .. get_icon(symbol.kind) .. ' ' .. symbol.name
         table.insert(lines, line)
+
+        -- Store metadata for symbol line
+        local sym_line_num = #lines + state.title_line - 1
+        state.line_metadata[sym_line_num] = {
+          kind = symbol.kind,
+          indent = 2,
+          icon_start = 4,
+          icon_end = 5,
+          name_start = 6 + vim.fn.strwidth(get_icon(symbol.kind)),
+        }
+
         symbol.display_line = #lines + state.title_line
       end
     end
@@ -266,6 +304,9 @@ local function render()
   end
 
   api.nvim_buf_set_option(state.bufnr, 'modifiable', true)
+
+  -- Clear line metadata before rendering
+  state.line_metadata = {}
 
   local lines = {}
 
@@ -309,7 +350,60 @@ function apply_highlights()
     api.nvim_buf_add_highlight(state.bufnr, ns, 'Title', 0, 0, -1)
   end
 
-  -- TODO: Add more sophisticated highlighting based on symbol types
+  -- Get highlight groups for different symbol kinds
+  local kind_highlights = {
+    [1] = 'VistaFile',           -- File
+    [2] = 'VistaModule',         -- Module
+    [3] = 'VistaNamespace',      -- Namespace
+    [4] = 'VistaPackage',        -- Package
+    [5] = 'VistaClass',          -- Class
+    [6] = 'VistaMethod',         -- Method
+    [7] = 'VistaProperty',       -- Property
+    [8] = 'VistaField',          -- Field
+    [9] = 'VistaConstructor',    -- Constructor
+    [10] = 'VistaEnum',          -- Enum
+    [11] = 'VistaInterface',     -- Interface
+    [12] = 'VistaFunction',      -- Function
+    [13] = 'VistaVariable',      -- Variable
+    [14] = 'VistaConstant',      -- Constant
+    [15] = 'VistaString',        -- String
+    [16] = 'VistaNumber',        -- Number
+    [17] = 'VistaBoolean',       -- Boolean
+    [18] = 'VistaArray',         -- Array
+    [19] = 'VistaObject',        -- Object
+    [20] = 'VistaKey',           -- Key
+    [21] = 'VistaNull',          -- Null
+    [22] = 'VistaEnumMember',    -- EnumMember
+    [23] = 'VistaStruct',        -- Struct
+    [24] = 'VistaEvent',         -- Event
+    [25] = 'VistaOperator',      -- Operator
+    [26] = 'VistaTypeParameter', -- TypeParameter
+  }
+
+  -- Apply highlights based on line metadata
+  for line_num, metadata in pairs(state.line_metadata) do
+    if metadata.is_category then
+      -- Highlight category headers
+      api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, metadata.fold_start, metadata.fold_end)
+      api.nvim_buf_add_highlight(state.bufnr, ns, 'Type', line_num, metadata.name_start, -1)
+    else
+      -- Highlight fold icons
+      if metadata.has_children then
+        api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, metadata.fold_start, metadata.fold_end)
+      end
+
+      -- Highlight icons (use a special color for icons)
+      if metadata.icon_start and metadata.icon_end then
+        api.nvim_buf_add_highlight(state.bufnr, ns, 'Special', line_num, metadata.icon_start, metadata.icon_end + 1)
+      end
+
+      -- Highlight symbol names based on their kind
+      if metadata.kind and metadata.name_start then
+        local hl_group = kind_highlights[metadata.kind] or 'Identifier'
+        api.nvim_buf_add_highlight(state.bufnr, ns, hl_group, line_num, metadata.name_start, -1)
+      end
+    end
+  end
 end
 
 -- Navigation functions
