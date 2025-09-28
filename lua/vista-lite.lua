@@ -6,14 +6,15 @@ local api = vim.api
 
 -- State management
 local state = {
-  bufnr = nil,
-  winnr = nil,
+  bufnr = nil,      -- Vista buffer
+  winnr = nil,      -- Vista window
   symbols = {},
   folded = {}, -- key: "line:name" value: true/false
   mode = 'tree', -- 'tree' or 'type'
   width = 30,
   file_path = nil,
-  lsp_client = nil,
+  source_bufnr = nil,  -- Source file buffer
+  source_winnr = nil,  -- Source file window
   title_line = 1, -- 0 or 1 depending on config
 }
 
@@ -138,21 +139,35 @@ end
 
 -- LSP integration
 local function request_symbols(callback)
-  -- Get the first active client to determine position encoding
-  local clients = vim.lsp.get_active_clients({ bufnr = 0 })
+  -- Use the source buffer, not the current (Vista) buffer
+  local bufnr = state.source_bufnr or vim.api.nvim_get_current_buf()
+
+  -- Check for active LSP clients
+  local clients = vim.lsp.get_active_clients({ bufnr = bufnr })
   if #clients == 0 then
+    vim.notify('No LSP client attached', vim.log.levels.WARN)
     callback({})
     return
   end
 
-  local client = clients[1]
-  local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+  -- Create params for documentSymbol request
+  local params = {
+    textDocument = vim.lsp.util.make_text_document_params(bufnr)
+  }
 
-  vim.lsp.buf_request(0, 'textDocument/documentSymbol', params, function(err, result)
-    if err or not result then
+  vim.lsp.buf_request(bufnr, 'textDocument/documentSymbol', params, function(err, result)
+    if err then
+      vim.notify('LSP Error: ' .. vim.inspect(err), vim.log.levels.ERROR)
       callback({})
       return
     end
+
+    if not result or vim.tbl_isempty(result) then
+      vim.notify('No symbols found', vim.log.levels.INFO)
+      callback({})
+      return
+    end
+
     callback(result)
   end)
 end
@@ -321,17 +336,20 @@ local function jump_to_symbol(preview_only)
     return
   end
 
-  -- Find the original window
-  local wins = api.nvim_list_wins()
+  -- Use the stored source window if it's still valid
   local target_win = nil
-
-  for _, win in ipairs(wins) do
-    if win ~= state.winnr then
-      local buf = api.nvim_win_get_buf(win)
-      local buf_name = api.nvim_buf_get_name(buf)
-      if buf_name == state.file_path then
-        target_win = win
-        break
+  if state.source_winnr and api.nvim_win_is_valid(state.source_winnr) then
+    target_win = state.source_winnr
+  else
+    -- Find a window with the source file
+    local wins = api.nvim_list_wins()
+    for _, win in ipairs(wins) do
+      if win ~= state.winnr then
+        local buf = api.nvim_win_get_buf(win)
+        if buf == state.source_bufnr then
+          target_win = win
+          break
+        end
       end
     end
   end
@@ -339,6 +357,7 @@ local function jump_to_symbol(preview_only)
   if not target_win then
     -- Create a new split if no window found
     vim.cmd('wincmd w')
+    vim.cmd('edit ' .. vim.fn.fnameescape(state.file_path))
     target_win = api.nvim_get_current_win()
   end
 
@@ -464,8 +483,10 @@ function M.setup(opts)
 end
 
 function M.open()
-  -- Get current file path
-  state.file_path = api.nvim_buf_get_name(0)
+  -- Save source buffer and window info BEFORE creating vista window
+  state.source_bufnr = api.nvim_get_current_buf()
+  state.source_winnr = api.nvim_get_current_win()
+  state.file_path = api.nvim_buf_get_name(state.source_bufnr)
 
   -- Create buffer and window
   create_buffer()
@@ -489,7 +510,9 @@ function M.open()
   end)
 
   -- Focus back to original window
-  vim.cmd('wincmd p')
+  if state.source_winnr and api.nvim_win_is_valid(state.source_winnr) then
+    api.nvim_set_current_win(state.source_winnr)
+  end
 end
 
 function M.close()
