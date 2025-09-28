@@ -143,23 +143,21 @@ end
 M.response = {}
 M.response_result = {}
 M.all_result = {}
----Parses the response from lsp request 'textDocument/documentSymbol' using buf_request_all
+
+--- Extract valid results from LSP response
 ---@param response table The result from buf_request_all
----@return table outline items
-function M.parse(response)
+---@return table|nil all_results
+local function extract_lsp_results(response)
     local all_results = {}
+    local got_result = false
 
     -- this ensure that if multiple lsp are using, only got symbol from one of them
     -- avoid duplicate symbols
-    local got_result = false
-
-    -- flatten results to one giant table of symbols
     for client_id, client_response in pairs(response) do
         if got_result then
             goto continue
         end
         if config.is_client_blacklisted_id(client_id) then
-            print("skipping client " .. client_id)
             goto continue
         end
 
@@ -167,6 +165,8 @@ function M.parse(response)
         if result == nil or type(result) ~= "table" then
             goto continue
         end
+
+        -- Store response for debugging
         M.response = client_response
         M.response_result = result
 
@@ -178,45 +178,35 @@ function M.parse(response)
         ::continue::
     end
 
-    local sorted = sort_result(all_results)
-
-    return parse_result(sorted, nil, nil)
+    return got_result and all_results or nil
 end
 
-function M.filter_type_result(result)
+---Parses the response from lsp request 'textDocument/documentSymbol' using buf_request_all
+---@param response table The result from buf_request_all
+---@param parse_for_type boolean? Whether to parse for type view (skip hierarchical parsing)
+---@return table outline items or raw results for type view
+function M.parse(response, parse_for_type)
+    local all_results = extract_lsp_results(response)
 
-end
-
-function M.parse_type(response)
-    local all_results = {}
-
-    local got_result = false
-    for client_id, client_response in pairs(response) do
-        if got_result then
-            goto continue
-        end
-        if config.is_client_blacklisted_id(client_id) then
-            print("skipping client " .. client_id)
-            goto continue
-        end
-
-        local result = client_response["result"]
-        if result == nil or type(result) ~= "table" then
-            goto continue
-        end
-        M.response = client_response
-        M.response_result = result
-
-        for _, value in pairs(result) do
-            table.insert(all_results, value)
-        end
-        got_result = true
-
-        ::continue::
+    if not all_results then
+        return {}
     end
 
     M.all_result = all_results
-    return all_results
+
+    -- For type view, return raw results without hierarchical parsing
+    if parse_for_type then
+        return all_results
+    end
+
+    -- For outline view, sort and parse hierarchically
+    local sorted = sort_result(all_results)
+    return parse_result(sorted, nil, nil)
+end
+
+-- Legacy compatibility (deprecated - use M.parse(response, true))
+M.parse_type = function(response)
+    return M.parse(response, true)
 end
 
 function M.node_is_keyword(buf, node)

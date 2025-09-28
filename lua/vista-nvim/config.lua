@@ -181,23 +181,41 @@ end
 -- end
 
 function M.is_symbol_blacklisted(kind, ft)
-    if kind == nil then
+    -- Validate inputs
+    if not kind or not ft then
         return false
     end
-    if M.filetype_map[ft] == nil then
+
+    local filetype_config = M.filetype_map[ft]
+    if not filetype_config then
         return false
     end
-    return has_value(M.filetype_map[ft].symbol_blacklist, kind)
+
+    local blacklist = filetype_config.symbol_blacklist
+    if not blacklist or type(blacklist) ~= "table" then
+        return false
+    end
+
+    return has_value(blacklist, kind)
 end
 
 function M.is_type_symbol_blacklisted(kind, ft)
-    if kind == nil then
+    -- Validate inputs
+    if not kind or not ft then
         return false
     end
-    if M.filetype_map[ft] == nil then
+
+    local filetype_config = M.filetype_map[ft]
+    if not filetype_config then
         return false
     end
-    return has_value(M.filetype_map[ft].type_symbol_blacklist, kind)
+
+    local blacklist = filetype_config.type_symbol_blacklist
+    if not blacklist or type(blacklist) ~= "table" then
+        return false
+    end
+
+    return has_value(blacklist, kind)
 end
 
 function M.is_client_blacklisted_id(client_id)

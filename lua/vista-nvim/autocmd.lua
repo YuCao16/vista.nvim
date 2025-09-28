@@ -36,39 +36,26 @@ local function setup_global_autocmd()
         })
     end
 
-    vim.api.nvim_create_autocmd("WinEnter", {
-        pattern = "*",
-        command = "",
-        -- TODO: add preview close function
-        -- callback = require("vista-nvim.preview").close,
-    })
-    -- local GoyoGroup = vim.api.nvim_create_augroup('GoyoGroup', { clear = true })
-    --
-    -- vim.api.nvim_create_autocmd('User', {
-    --     pattern = 'GoyoEnter',
-    --     callback = function()
-    --         pass
-    --     end,
-    --     group = GoyoGroup
+    -- Preview functionality will be implemented in future versions
+    -- vim.api.nvim_create_autocmd("WinEnter", {
+    --     pattern = "*",
+    --     callback = require("vista-nvim.preview").close,
     -- })
 end
 
 local function setup_buffer_autocmd()
-    if config.auto_preview then
-        vim.api.nvim_create_autocmd("CursorHold", {
-            buffer = 0,
-            command = "",
-            --TODO: add auto preview show function
-            -- callback = require("vista-nvim.preview").show,
-        })
-    else
-        vim.api.nvim_create_autocmd("CursorMoved", {
-            buffer = 0,
-            command = "",
-            --TODO: add auto preview close function
-            -- callback = require("vista-nvim.preview").close,
-        })
-    end
+    -- Auto preview functionality will be implemented in future versions
+    -- if config.auto_preview then
+    --     vim.api.nvim_create_autocmd("CursorHold", {
+    --         buffer = 0,
+    --         callback = require("vista-nvim.preview").show,
+    --     })
+    -- else
+    --     vim.api.nvim_create_autocmd("CursorMoved", {
+    --         buffer = 0,
+    --         callback = require("vista-nvim.preview").close,
+    --     })
+    -- end
 end
 
 function M.setup()

@@ -8,14 +8,37 @@ local function getParams(bufnr)
 end
 
 function M.hover_info(bufnr, params, on_info)
+    -- Validate input parameters
+    if not bufnr or not params or not on_info then
+        if on_info then
+            on_info(nil, {
+                contents = {
+                    kind = "markdown",
+                    content = { "Invalid parameters provided!" },
+                },
+            })
+        end
+        return
+    end
+
     local clients = vim.lsp.buf_get_clients(bufnr)
+    if not clients or vim.tbl_isempty(clients) then
+        on_info(nil, {
+            contents = {
+                kind = "markdown",
+                content = { "No LSP clients available!" },
+            },
+        })
+        return
+    end
+
     local used_client
 
     for id, client in pairs(clients) do
         if config.is_client_blacklisted_id(id) then
             goto continue
         else
-            if client.server_capabilities.hoverProvider then
+            if client and client.server_capabilities and client.server_capabilities.hoverProvider then
                 used_client = client
                 break
             end
@@ -27,12 +50,36 @@ function M.hover_info(bufnr, params, on_info)
         on_info(nil, {
             contents = {
                 kind = "markdown",
-                content = { "No extra information availaible!" },
+                content = { "No extra information available!" },
+            },
+        })
+        return
+    end
+
+    -- Wrap the request in pcall for error handling
+    local success, err = pcall(function()
+        used_client.request("textDocument/hover", params, function(err, result)
+            if err then
+                on_info(err, {
+                    contents = {
+                        kind = "markdown",
+                        content = { "Error retrieving hover information: " .. tostring(err) },
+                    },
+                })
+            else
+                on_info(err, result)
+            end
+        end, bufnr)
+    end)
+
+    if not success then
+        on_info(err, {
+            contents = {
+                kind = "markdown",
+                content = { "Failed to request hover information: " .. tostring(err) },
             },
         })
     end
-
-    used_client.request("textDocument/hover", params, on_info, bufnr)
 end
 
 -- probably change this

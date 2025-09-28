@@ -20,6 +20,12 @@ function M.__refresh()
         return
     end
 
+    local bufnr = a.nvim_get_current_buf()
+
+    -- Track this buffer for cleanup
+    local vista = require("vista-nvim")
+    vista._setup_buffer_cleanup(bufnr)
+
     view.View.current_ft = vim.bo.filetype
     view.View.current_filepath = vim.fn.expand("%:p")
     if utils_provider.current_support[view.View.current_ft] == nil then

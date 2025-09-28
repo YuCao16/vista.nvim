@@ -36,7 +36,7 @@ local function max_title_width()
 end
 
 function M.add_highlighs_title(bufnr, theme)
-    local hlns = vim.api.nvim_create_namespace("vista-icon-highlight")
+    local hlns = M._title_highlight_ns
     vim.api.nvim_buf_clear_namespace(bufnr, hlns, 0, -1)
     vim.api.nvim_buf_add_highlight(bufnr, hlns, "VistaOutlineTitle", 0, 3, -2)
     if theme == "tree" then
@@ -60,8 +60,31 @@ function M.add_highlighs_title(bufnr, theme)
     end
 end
 
+-- Reuse namespace for better performance
+M._highlight_ns = M._highlight_ns or vim.api.nvim_create_namespace("vista-all-highlight")
+M._title_highlight_ns = M._title_highlight_ns or vim.api.nvim_create_namespace("vista-icon-highlight")
+
+-- Batch buffer operations to reduce modifiable toggles
+local function batch_write_buffer(bufnr, operations)
+    if not is_buffer_vista(bufnr) then
+        return
+    end
+
+    vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+
+    for _, op in ipairs(operations) do
+        if op.type == "set_lines" then
+            vim.api.nvim_buf_set_lines(bufnr, op.start, op.end_line, op.strict_indexing or false, op.lines)
+        elseif op.type == "add_highlight" then
+            vim.api.nvim_buf_add_highlight(bufnr, op.ns, op.hl_group, op.line, op.col_start, op.col_end)
+        end
+    end
+
+    vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
+end
+
 function M.add_highlights(bufnr, hl_info, nodes)
-    local ns_id = vim.api.nvim_create_namespace("vista-all-highlight")
+    local ns_id = M._highlight_ns
     vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
     if config.show_title then
         M.add_highlighs_title(bufnr, M.structure_theme)
@@ -257,19 +280,16 @@ function M.write_vista(bufnr, lines)
         return
     end
 
-    vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
-    if config.show_title then
-        vim.api.nvim_buf_set_lines(
-            bufnr,
-            view.View.title_line,
-            -1,
-            false,
-            lines
-        )
-    else
-        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-    end
-    vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
+    local operations = {
+        {
+            type = "set_lines",
+            start = config.show_title and view.View.title_line or 0,
+            end_line = -1,
+            lines = lines
+        }
+    }
+
+    batch_write_buffer(bufnr, operations)
 end
 
 -- runs the whole writing routine where the text is cleared, new data is parsed

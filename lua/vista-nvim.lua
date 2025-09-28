@@ -9,12 +9,9 @@ local writer = require("vista-nvim.writer")
 local utils_basic = require("vista-nvim.utils.basic")
 local highlight = require("vista-nvim.highlight")
 local config = require("vista-nvim.config")
--- local lib = require("vista-nvim.lib")
--- local colors = require("vista-nvim.colors")
 
 local M = { setup_called = false, _internal_setup_called = false }
--- TODO: clear cache and memory mechanic
--- data
+-- data storage with proper cleanup
 M.data = {
     outline_items = {},
     flattened_outline_items = {},
@@ -23,6 +20,11 @@ M.data = {
     code_win = 0,
     current_bufnr = nil,
 }
+
+-- Track autocmd IDs for cleanup
+M._autocmd_ids = {}
+-- Track buffers we're monitoring
+M._tracked_buffers = {}
 
 local deprecated_config_map = {}
 local function check_deprecated_field(key)
@@ -96,24 +98,52 @@ function M.destroy()
     view.destroy()
 end
 
--- TODO: replace defer_fn maybe
+-- Focus with proper async handling
 function M.focus()
-    -- if not view.is_win_open() then
     if not M._internal_setup_called then
         M.open()
-        vim.defer_fn(function()
-            if view.View.bufnr == nil then
-                return
+        -- Use a more reliable approach than defer_fn
+        local function try_focus()
+            if view.View.bufnr and vim.api.nvim_buf_is_valid(view.View.bufnr) then
+                local winnr = view.get_winnr()
+                if winnr and winnr > 0 then
+                    vim.fn.win_gotoid(winnr)
+                    return true
+                end
             end
-            vim.fn.win_gotoid(view.get_winnr())
-        end, 1000)
+            return false
+        end
+
+        -- Try immediately first
+        if not try_focus() then
+            -- If immediate focus fails, use autocmd to wait for window creation
+            local focus_group = vim.api.nvim_create_augroup("VistaNvimFocus", { clear = true })
+            vim.api.nvim_create_autocmd("WinNew", {
+                group = focus_group,
+                callback = function()
+                    vim.schedule(function()
+                        if try_focus() then
+                            vim.api.nvim_del_augroup_by_id(focus_group)
+                        end
+                    end)
+                end,
+                once = true,
+            })
+        end
         return
     end
+
     if not view.is_win_open() then
         M.open()
-        vim.fn.win_gotoid(view.get_winnr())
+        local winnr = view.get_winnr()
+        if winnr and winnr > 0 then
+            vim.fn.win_gotoid(winnr)
+        end
     else
-        vim.fn.win_gotoid(view.get_winnr())
+        local winnr = view.get_winnr()
+        if winnr and winnr > 0 then
+            vim.fn.win_gotoid(winnr)
+        end
     end
 end
 
@@ -131,26 +161,84 @@ function M.toggle(opt)
 end
 
 function M.on_win_leave()
-    vim.defer_fn(function()
+    -- Use vim.schedule instead of defer_fn for better reliability
+    vim.schedule(function()
         if not view.is_win_open() then
             return
         end
 
         local windows = api.nvim_list_wins()
+        if not windows or #windows == 0 then
+            return
+        end
+
         local curtab = api.nvim_get_current_tabpage()
         local wins_in_tabpage = vim.tbl_filter(function(w)
-            return api.nvim_win_get_tabpage(w) == curtab
+            return pcall(api.nvim_win_get_tabpage, w) and api.nvim_win_get_tabpage(w) == curtab
         end, windows)
+
         if #windows == 1 then
             M.close()
         elseif #wins_in_tabpage == 1 then
-            api.nvim_command(":tabclose")
+            pcall(api.nvim_command, ":tabclose")
         end
-    end, 50)
+    end)
+end
+
+function M.cleanup_buffer_data(bufnr)
+    -- Clean up data for a specific buffer
+    if not bufnr then return end
+
+    M.data.outline_items[bufnr] = nil
+    M.data.flattened_outline_items[bufnr] = nil
+    M.data.type_items[bufnr] = nil
+    M.data.classified_outline_items[bufnr] = nil
+
+    -- Remove from tracked buffers
+    M._tracked_buffers[bufnr] = nil
+end
+
+function M.cleanup_all_data()
+    -- Clean up all stored data
+    M.data.outline_items = {}
+    M.data.flattened_outline_items = {}
+    M.data.type_items = {}
+    M.data.classified_outline_items = {}
+    M.data.code_win = 0
+    M.data.current_bufnr = nil
+    M._tracked_buffers = {}
 end
 
 function M.on_vim_leave()
+    -- Clean up everything on exit
+    M.cleanup_all_data()
+
+    -- Clean up autocmds
+    for _, id in ipairs(M._autocmd_ids) do
+        pcall(vim.api.nvim_del_autocmd, id)
+    end
+    M._autocmd_ids = {}
+
     view.destroy()
+end
+
+-- Setup buffer cleanup autocmd
+function M._setup_buffer_cleanup(bufnr)
+    if M._tracked_buffers[bufnr] then
+        return -- Already tracking this buffer
+    end
+
+    M._tracked_buffers[bufnr] = true
+
+    -- Clean up when buffer is deleted or wiped out
+    local id = vim.api.nvim_create_autocmd({"BufDelete", "BufWipeout"}, {
+        buffer = bufnr,
+        callback = function()
+            M.cleanup_buffer_data(bufnr)
+        end,
+        once = true,
+    })
+    table.insert(M._autocmd_ids, id)
 end
 
 return M
