@@ -226,42 +226,47 @@ local function render_tree(symbols, lines, indent, parent_folded, is_last_child)
     local line_parts = {}
     local part_positions = {}  -- Track start/end positions of each part
 
-    -- Build indent with guides if enabled
-    if config.indent_guides.enable and config.indent_guides.style == 'tree' and indent > 0 then
-      local indent_str = ''
-      for level = 1, indent - 1 do
-        if is_last_child[level] then
-          indent_str = indent_str .. '  '  -- No line for completed branches
-        else
-          indent_str = indent_str .. config.indent_guides.markers.vertical .. ' '  -- Vertical line
-        end
+    -- Build proper indentation
+    if indent > 0 then
+      -- Add spaces for parent indentation levels
+      local base_indent = string.rep('  ', indent - 1)
+      table.insert(line_parts, base_indent)
+      part_positions.base_indent = {0, vim.fn.strwidth(base_indent)}
+
+      -- Add tree connector if indent guides are enabled
+      if config.indent_guides.enable and config.indent_guides.style == 'tree' then
+        local connector = is_last and '└' or '│'
+        table.insert(line_parts, connector .. ' ')
+        part_positions.connector = {part_positions.base_indent[2], part_positions.base_indent[2] + vim.fn.strwidth(connector)}
+      else
+        table.insert(line_parts, '  ')  -- Just spaces if no guides
       end
 
-      -- For the current level, always use vertical line
-      indent_str = indent_str .. config.indent_guides.markers.vertical .. ' '
-
-      table.insert(line_parts, indent_str)
-      part_positions.indent = {0, vim.fn.strwidth(indent_str)}
+      part_positions.indent = {0, vim.fn.strwidth(table.concat(line_parts))}
     else
-      -- Simple indentation without guides
-      local indent_str = string.rep('  ', indent)
-      table.insert(line_parts, indent_str)
-      part_positions.indent = {0, vim.fn.strwidth(indent_str)}
+      -- No indentation for top-level items
+      part_positions.indent = {0, 0}
     end
 
-    -- Add fold icon
-    table.insert(line_parts, fold_icon .. ' ')
-    local fold_start = part_positions.indent[2]
-    part_positions.fold = {fold_start, fold_start + vim.fn.strwidth(fold_icon)}
+    -- Add fold icon for top-level items with children
+    if indent == 0 and has_children then
+      table.insert(line_parts, fold_icon .. ' ')
+      part_positions.fold = {0, vim.fn.strwidth(fold_icon)}
+    elseif indent == 0 then
+      -- Top level without children - add space for alignment
+      table.insert(line_parts, '  ')
+    end
+    -- For nested items, no fold icon is shown
 
     -- Add icon
     local icon = get_icon(symbol.kind)
     table.insert(line_parts, icon .. ' ')
-    part_positions.icon = {part_positions.fold[2] + 1, part_positions.fold[2] + 1 + vim.fn.strwidth(icon)}
+    local current_pos = vim.fn.strwidth(table.concat(line_parts)) - vim.fn.strwidth(icon .. ' ')
+    part_positions.icon = {current_pos, current_pos + vim.fn.strwidth(icon)}
 
     -- Add name
     table.insert(line_parts, symbol.name)
-    part_positions.name = {part_positions.icon[2] + 1, -1}
+    part_positions.name = {current_pos + vim.fn.strwidth(icon) + 1, -1}
 
     local line = table.concat(line_parts)
     table.insert(lines, line)
@@ -279,10 +284,7 @@ local function render_tree(symbols, lines, indent, parent_folded, is_last_child)
     symbol.display_line = #lines + state.title_line
 
     if has_children and not is_folded and not parent_folded then
-      -- Update is_last_child for recursion
-      local new_is_last = vim.deepcopy(is_last_child)
-      new_is_last[indent + 1] = is_last
-      render_tree(symbol.children, lines, indent + 1, false, new_is_last)
+      render_tree(symbol.children, lines, indent + 1, false, is_last_child)
     end
   end
 
@@ -448,9 +450,9 @@ function apply_highlights()
     elseif metadata.positions then
       local pos = metadata.positions
 
-      -- Highlight indent guides
-      if pos.indent and config.indent_guides.enable then
-        api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, pos.indent[1], pos.indent[2])
+      -- Highlight indent guides (connector)
+      if pos.connector and config.indent_guides.enable then
+        api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, pos.connector[1], pos.connector[2])
       end
 
       -- Highlight fold icons
