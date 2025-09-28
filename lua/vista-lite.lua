@@ -201,37 +201,63 @@ local function process_symbols(symbols, parent_name)
 end
 
 -- Rendering functions
-local function render_tree(symbols, lines, indent, parent_folded)
+local function render_tree(symbols, lines, indent, parent_folded, is_last_child)
   lines = lines or {}
   indent = indent or 0
+  is_last_child = is_last_child or {}
 
-  for _, symbol in ipairs(symbols) do
+  for i, symbol in ipairs(symbols) do
     local is_folded = state.folded[symbol.range.start.line .. ':' .. symbol.name]
     local has_children = symbol.children and #symbol.children > 0
     local fold_icon = has_children and (is_folded and '▸' or '▾') or ' '
+    local is_last = (i == #symbols)
 
-    local line = string.rep('  ', indent) .. fold_icon .. ' ' ..
+    -- Build indent guides
+    local indent_str = ''
+    for level = 1, indent do
+      if is_last_child[level] then
+        indent_str = indent_str .. '  '  -- No line for completed branches
+      else
+        indent_str = indent_str .. '│ '  -- Vertical line for continuing branches
+      end
+    end
+
+    -- Add the branch connector
+    local branch = ''
+    if indent > 0 then
+      branch = is_last and '└─' or '├─'
+    end
+
+    local line = indent_str .. branch .. fold_icon .. ' ' ..
                  get_icon(symbol.kind) .. ' ' .. symbol.name
     table.insert(lines, line)
 
     -- Store line metadata for highlighting
     local line_num = #lines + state.title_line - 1
+    local prefix_len = vim.fn.strwidth(indent_str .. branch)
     state.line_metadata[line_num] = {
       kind = symbol.kind,
       has_children = has_children,
       indent = indent,
-      fold_start = indent * 2,
-      fold_end = indent * 2 + 1,
-      icon_start = indent * 2 + 2,
-      icon_end = indent * 2 + 3,
-      name_start = indent * 2 + 4 + vim.fn.strwidth(get_icon(symbol.kind)),
+      indent_guide_start = 0,
+      indent_guide_end = vim.fn.strwidth(indent_str),
+      branch_start = vim.fn.strwidth(indent_str),
+      branch_end = prefix_len,
+      fold_start = prefix_len,
+      fold_end = prefix_len + 1,
+      icon_start = prefix_len + 2,
+      icon_end = prefix_len + 3,
+      name_start = prefix_len + 4 + vim.fn.strwidth(get_icon(symbol.kind)),
     }
 
     -- Store symbol info for navigation
     symbol.display_line = #lines + state.title_line
 
     if has_children and not is_folded and not parent_folded then
-      render_tree(symbol.children, lines, indent + 1, false)
+      -- Update is_last_child for recursion
+      local new_is_last = vim.deepcopy(is_last_child)
+      new_is_last[indent + 1] = is_last
+      render_tree(symbol.children, lines, indent + 1, false, new_is_last)
     end
   end
 
@@ -387,6 +413,14 @@ function apply_highlights()
       api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, metadata.fold_start, metadata.fold_end)
       api.nvim_buf_add_highlight(state.bufnr, ns, 'Type', line_num, metadata.name_start, -1)
     else
+      -- Highlight indent guides and branches
+      if metadata.indent_guide_end and metadata.indent_guide_end > 0 then
+        api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, metadata.indent_guide_start, metadata.indent_guide_end)
+      end
+      if metadata.branch_start and metadata.branch_end and metadata.branch_end > metadata.branch_start then
+        api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, metadata.branch_start, metadata.branch_end)
+      end
+
       -- Highlight fold icons
       if metadata.has_children then
         api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, metadata.fold_start, metadata.fold_end)
