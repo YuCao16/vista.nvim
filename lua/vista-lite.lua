@@ -326,24 +326,27 @@ local function render_type(symbols)
     state.line_metadata[line_num] = {
       is_category = true,
       kind_name = kind_name,
-      fold_start = 0,
-      fold_end = 1,
-      name_start = 2,
+      positions = {
+        fold = {0, 1},
+        name = {2, -1},
+      }
     }
 
     if not is_folded then
       for _, symbol in ipairs(syms) do
-        local line = '    ' .. get_icon(symbol.kind) .. ' ' .. symbol.name
+        local icon = get_icon(symbol.kind)
+        local line = '    ' .. icon .. ' ' .. symbol.name
         table.insert(lines, line)
 
-        -- Store metadata for symbol line
+        -- Store metadata for symbol line with positions
         local sym_line_num = #lines + state.title_line - 1
         state.line_metadata[sym_line_num] = {
           kind = symbol.kind,
-          indent = 2,
-          icon_start = 4,
-          icon_end = 5,
-          name_start = 6 + vim.fn.strwidth(get_icon(symbol.kind)),
+          positions = {
+            indent = {0, 4},  -- The 4 spaces at the start
+            icon = {4, 4 + vim.fn.strwidth(icon)},
+            name = {4 + vim.fn.strwidth(icon) + 1, -1},
+          }
         }
 
         symbol.display_line = #lines + state.title_line
@@ -438,10 +441,15 @@ function apply_highlights()
 
   -- Apply highlights based on line metadata
   for line_num, metadata in pairs(state.line_metadata) do
-    if metadata.is_category then
+    if metadata.is_category and metadata.positions then
       -- Highlight category headers
-      api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, metadata.fold_start, metadata.fold_end)
-      api.nvim_buf_add_highlight(state.bufnr, ns, 'Type', line_num, metadata.name_start, -1)
+      local pos = metadata.positions
+      if pos.fold then
+        api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, pos.fold[1], pos.fold[2])
+      end
+      if pos.name then
+        api.nvim_buf_add_highlight(state.bufnr, ns, 'Type', line_num, pos.name[1], pos.name[2])
+      end
     elseif metadata.positions then
       local pos = metadata.positions
 
