@@ -138,7 +138,16 @@ end
 
 -- LSP integration
 local function request_symbols(callback)
-  local params = vim.lsp.util.make_position_params()
+  -- Get the first active client to determine position encoding
+  local clients = vim.lsp.get_active_clients({ bufnr = 0 })
+  if #clients == 0 then
+    callback({})
+    return
+  end
+
+  local client = clients[1]
+  local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+
   vim.lsp.buf_request(0, 'textDocument/documentSymbol', params, function(err, result)
     if err or not result then
       callback({})
