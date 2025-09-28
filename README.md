@@ -1,386 +1,111 @@
-# Vista.nvim
+# Vista-Lite
 
-A powerful symbol viewer & outliner for Neovim, written in Lua.
-
-Vista.nvim provides a tree-like view of symbols in your code, supporting LSP and Markdown. It helps you navigate and understand code structure with ease.
+A minimal, fast LSP symbol viewer for Neovim. Rewritten from scratch to be simple and maintainable.
 
 ## Features
 
-- 🚀 **LSP Integration**: Full support for Language Server Protocol symbols
-- 📝 **Markdown Support**: Outline view for Markdown documents
-- 🎨 **Multiple Themes**: Choose between `tree` or `type` layout styles
-- 🔧 **Highly Configurable**: Customize appearance, behavior, and keybindings
-- 🎯 **Symbol Filtering**: Blacklist unwanted symbols per filetype
-- 📏 **Flexible Layout**: Position on left or right, adjustable width
-- 🎨 **Icon Support**: Automatic detection and support for mini.icons, nvim-web-devicons, or builtin icons
-- ⚡ **Performance**: Optimized for large files with size/line limits
-
-## Requirements
-
-- Neovim >= 0.5.0
-- LSP server configured (for LSP support)
-
-## Optional Dependencies
-
-For enhanced icon support, install one of these plugins:
-- **[mini.icons](https://github.com/echasnovski/mini.icons)** - Recommended, modern icon provider
-- **[nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons)** - Popular icon provider
-
-If none are installed, vista.nvim will use builtin icons.
+- =� **Lightweight**: ~600 lines of code total
+- =� **LSP Only**: Focused on modern LSP integration
+- <� **Mini.icons Support**: Beautiful icons with fallback
+- =� **Fold Memory**: Persistent fold states across sessions
+- <2 **Dual Modes**: Tree view and Type-grouped view
+- � **Fast**: No complex caching, direct rendering
 
 ## Installation
 
-### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
+Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 {
-  "yucao16/vista.nvim",
+  'liuchengxu/vista.nvim',
+  branch = 'vista-lite',
+  cmd = { 'Vista', 'VistaOpen', 'VistaFocus' },
   config = function()
-    require("vista-nvim").setup({
-      -- your configuration here
+    require('vista-lite').setup({
+      width = 30,           -- number or "30%"
+      position = 'left',    -- 'left' or 'right'
+      auto_close = false,   -- close vista when jumping to symbol
+      show_title = true,    -- show file name at top
+      icons = {
+        provider = 'mini',  -- 'mini', 'builtin', 'none'
+      },
+      fold = {
+        enable_memory = true,   -- remember fold states
+        save_on_close = true,   -- auto-save on close
+      },
     })
   end,
 }
-```
-
-### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
-
-```lua
-use {
-  'yucao16/vista.nvim',
-  config = function()
-    require('vista-nvim').setup({
-      -- your configuration here
-    })
-  end
-}
-```
-
-## Configuration
-
-### Default Configuration
-
-```lua
-require("vista-nvim").setup({
-  -- Window settings
-  width = 30,                    -- Width of the vista window
-  side = "right",                 -- Position: "left" or "right"
-  border = "rounded",             -- Border style
-  show_title = true,              -- Show title in vista window
-
-  -- Display settings
-  theme = "type",                 -- Layout theme: "tree" or "type"
-  show_guides = true,             -- Show indent guides
-  show_symbol_details = true,     -- Show symbol details
-  highlight_hovered_item = true,  -- Highlight item under cursor
-
-  -- Behavior settings
-  auto_close = false,             -- Auto close vista when last window
-  auto_preview = false,           -- Auto preview symbol location
-  auto_unfold_hover = false,      -- Auto unfold when hovering
-
-  -- Folding settings
-  autofold_depth = 2,             -- Auto fold depth level
-  fold_markers = { "", "" },    -- Fold/unfold markers
-  theme_markers = { "🆃 ", "🅲 " }, -- Theme indicators
-
-  -- Performance settings
-  disable_max_lines = 10000,     -- Disable for files with more lines
-  disable_max_sizes = 2000000,   -- Disable for files larger than 2MB
-
-  -- Provider settings
-  default_provider = "lsp",       -- Default provider: "lsp" or "markdown"
-  lsp_blacklist = { "pyright", "null-ls" }, -- Blacklisted LSP clients
-
-  -- Icon settings
-  use_icons_provider = true,      -- Auto-detect and use mini.icons, nvim-web-devicons, or builtin
-
-  -- Keybindings
-  disable_default_keybindings = false,
-  bindings = {
-    -- Add custom keybindings here
-  },
-
-  -- Symbol blacklist (global)
-  type_symbol_blacklist = {
-    "Variable", "Constant", "String",
-    "Number", "Boolean", "Array", "Package"
-  },
-
-  -- Per-filetype configuration
-  filetype_map = {
-    python = {
-      provider = "lsp",
-      symbol_blacklist = { "Module" },
-      type_symbol_blacklist = { "Module" },
-    },
-    lua = {
-      provider = "lsp",
-      symbol_blacklist = {
-        "Variable", "Constant", "String",
-        "Number", "Boolean", "Array", "Package",
-      },
-      type_symbol_blacklist = {
-        "Variable", "Constant", "String",
-        "Number", "Boolean", "Array", "Package",
-      },
-    },
-    -- Add more filetype configurations...
-  },
-
-  -- Symbol icons and highlights
-  symbols = {
-    Method = { icon = "󰆧", hl = "@Method" },
-    Function = { icon = "󰊕", hl = "@Function" },
-    Constructor = { icon = "", hl = "@Constructor" },
-    Field = { icon = "󰜢", hl = "@Field" },
-    Variable = { icon = "󰀫", hl = "@Constant" },
-    Class = { icon = "󰠱", hl = "@Type" },
-    Interface = { icon = "", hl = "@Type" },
-    Module = { icon = "", hl = "@namespace" },
-    Property = { icon = "󰜢", hl = "@Method" },
-    Enum = { icon = "", hl = "@Type" },
-    Struct = { icon = "󰙅", hl = "@Type" },
-    -- ... more symbols
-  },
-})
 ```
 
 ## Commands
 
-Vista.nvim provides several commands to control the symbol viewer:
+- `:Vista` - Toggle the symbol viewer
+- `:VistaOpen` - Open the symbol viewer
+- `:VistaClose` - Close the symbol viewer
+- `:VistaFocus` - Focus the symbol viewer window
+- `:VistaRefresh` - Refresh symbols from LSP
 
-| Command | Description |
-|---------|-------------|
-| `:VistaNvimOpen` | Open the vista window |
-| `:VistaNvimClose` | Close the vista window |
-| `:VistaNvimToggle` | Toggle the vista window |
-| `:VistaNvimFocus` | Focus the vista window |
-| `:VistaNvimResize <width>` | Resize the vista window |
-| `:VistaNvim tree` | Switch to tree theme |
-| `:VistaNvim type` | Switch to type theme |
-| `:VistaNvim status` | Show current status and icon provider info |
+## Keybindings (in Vista window)
 
-## Default Keybindings
+- `<CR>` - Jump to symbol
+- `p` - Preview symbol (don't move focus)
+- `o` - Toggle fold
+- `s` - Switch between tree/type mode
+- `q` - Close vista
+- `zR` - Expand all
+- `zr` - Collapse all
 
-When the vista window is focused:
+## Configuration
 
-| Key | Action |
-|-----|--------|
-| `q` | Close vista window |
-| `Q` | Destroy vista window and cleanup |
-| `<CR>` | Jump to symbol location |
-| `o` | Toggle fold |
-| `O` | Toggle all folds |
-| `p` | Preview symbol location |
-
-## Themes
-
-Vista.nvim supports two layout themes:
-
-### Tree Theme
-Displays symbols in a hierarchical tree structure, showing the relationships between parent and child elements.
-
-```
-▾ Class: MyClass
-  ▾ Method: __init__
-    Variable: self.value
-  ▸ Method: process
-```
-
-### Type Theme
-Groups symbols by their type (functions, classes, variables, etc.), making it easier to find specific kinds of symbols.
-
-```
-▾ Classes
-  MyClass
-  AnotherClass
-▾ Functions
-  process_data
-  calculate_result
-▾ Variables
-  config
-  settings
-```
-
-## LSP Support
-
-Vista.nvim automatically detects and uses your configured LSP servers. To ensure proper functionality:
-
-1. Make sure you have LSP servers configured for your languages
-2. Vista will use the active LSP client for the current buffer
-3. You can blacklist specific LSP clients in the configuration
-
-## Markdown Support
-
-For Markdown files, Vista.nvim provides an outline based on headings:
-
-```markdown
-# Title           -> Level 1
-## Section        -> Level 2
-### Subsection    -> Level 3
-```
-
-## Performance Optimization
-
-Vista.nvim includes several performance optimizations:
-
-- **File size limits**: Automatically disables for very large files
-- **Line count limits**: Skips files with too many lines
-- **Lazy loading**: Only processes visible symbols
-- **Smart updates**: Updates only when necessary
-
-## API
-
-You can programmatically control Vista.nvim:
+Full configuration example:
 
 ```lua
--- Open vista
-require("vista-nvim").open()
+require('vista-lite').setup({
+  width = 30,           -- fixed width, or...
+  -- width = '25%',     -- percentage of window
+  position = 'left',    -- or 'right'
+  auto_close = false,   -- auto close on jump
+  show_title = true,    -- show filename header
 
--- Close vista
-require("vista-nvim").close()
+  icons = {
+    provider = 'mini',  -- 'mini' (requires mini.icons)
+                       -- 'builtin' (nerd font icons)
+                       -- 'none' (no icons)
+  },
 
--- Toggle vista
-require("vista-nvim").toggle()
+  fold = {
+    enable_memory = true,   -- save fold states
+    save_on_close = true,   -- auto-save when closing
+  },
 
--- Focus vista window
-require("vista-nvim").focus()
-
--- Resize vista window
-require("vista-nvim").resize(40)
-
--- Check if vista is open
-local is_open = require("vista-nvim").is_open()
-```
-
-## Icon Providers
-
-Vista.nvim automatically detects and uses available icon providers for better visual experience:
-
-### Priority Order
-1. **mini.icons** (highest priority, recommended)
-2. **nvim-web-devicons** (fallback)
-3. **Builtin icons** (ultimate fallback)
-
-### Using mini.icons (Recommended)
-
-Install mini.icons for the best icon experience:
-
-```lua
--- With lazy.nvim
-{
-  "echasnovski/mini.icons",
-  config = function()
-    require("mini.icons").setup()
-  end,
-}
-```
-
-Vista.nvim will automatically:
-- Detect mini.icons
-- Initialize it if needed
-- Use LSP kind icons from mini.icons
-- Apply proper highlighting
-
-### Using nvim-web-devicons
-
-If you prefer nvim-web-devicons:
-
-```lua
--- With lazy.nvim
-{
-  "nvim-tree/nvim-web-devicons",
-  config = function()
-    require("nvim-web-devicons").setup()
-  end,
-}
-```
-
-### Disabling Icon Providers
-
-To use only builtin icons:
-
-```lua
-require("vista-nvim").setup({
-  use_icons_provider = false,
-})
-```
-
-### Custom Icons
-
-You can still override icons manually in the configuration:
-
-```lua
-require("vista-nvim").setup({
-  symbols = {
-    Function = { icon = "󰊕", hl = "@function" },
-    Class = { icon = "󰠱", hl = "@type" },
-    -- ... other custom icons
+  keymaps = {
+    jump = '<CR>',
+    preview = 'p',
+    toggle_fold = 'o',
+    switch_mode = 's',
+    close = 'q',
+    expand_all = 'zR',
+    collapse_all = 'zr',
   },
 })
 ```
 
-### Checking Current Icon Provider
+## Why Vista-Lite?
 
-To see which icon provider is currently being used:
+The original Vista.nvim grew to over 4600 lines of code with complex abstractions and features. Vista-Lite is a complete rewrite focusing on:
 
-```vim
-:VistaNvim status
-```
+- **Simplicity**: One main file, clear code structure
+- **Performance**: Direct rendering without complex caching
+- **Maintainability**: Easy to understand and modify
+- **Reliability**: Fewer moving parts = fewer bugs
 
-Or programmatically in Lua:
+## Requirements
 
-```lua
--- Get status information
-local status = require("vista-nvim").get_status()
-print("Icon provider:", status.icon_provider)
-print("Using icons:", status.use_icons_provider)
-
--- Or show detailed status
-require("vista-nvim").status()
-```
-
-## Troubleshooting
-
-### Vista doesn't show symbols
-- Ensure LSP is properly configured and running (`:LspInfo`)
-- Check if the filetype is supported
-- Verify the file isn't exceeding size/line limits
-
-### Symbols are not updating
-- Try manually refreshing with `:VistaNvimOpen`
-- Check if LSP client is not blacklisted
-
-### Performance issues
-- Adjust `disable_max_lines` and `disable_max_sizes` settings
-- Consider blacklisting unnecessary symbol types
-- Reduce `autofold_depth` for files with many symbols
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues and pull requests.
-
-## TODO
-
-- [x] Implement a loading page
-- [x] Title change while width change
-- [ ] Implement set_all_fold for type
-- [ ] Implement preview
-- [ ] Implement detail
-- [ ] Quit all Vista window within current tabpage
-- [ ] Predefinable fold class for 'nvim.lsp' type layout
-- [ ] Memorable fold
-- [ ] Implement universal-ctags, with source switch
-- [ ] Implement treesitter, with source switch
-- [ ] Move general way to setting key bindings
-- [ ] Make first line foldable (Optional)
+- Neovim 0.8+ with LSP configured
+- (Optional) [mini.icons](https://github.com/echasnovski/mini.icons) for better icons
+- (Optional) Nerd Font for builtin icons
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details
-
-## Acknowledgments
-
-- Inspired by [tagbar](https://github.com/preservim/tagbar) and [vista.vim](https://github.com/liuchengxu/vista.vim)
-- Built with love for the Neovim community
+MIT
