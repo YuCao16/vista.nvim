@@ -1,12 +1,12 @@
 local M = {}
 
 function M.is_buf_attached_to_lsp(bufnr)
-    local clients = vim.lsp.buf_get_clients(bufnr or 0)
-    return clients ~= nil and #clients > 0
+  local clients = vim.lsp.buf_get_clients(bufnr or 0)
+  return clients ~= nil and #clients > 0
 end
 
 function M.is_buf_markdown(bufnr)
-    return vim.api.nvim_buf_get_option(bufnr, "ft") == "markdown"
+  return vim.api.nvim_buf_get_option(bufnr, "ft") == "markdown"
 end
 
 ---Merges a symbol tree recursively, only replacing nodes
@@ -17,63 +17,58 @@ end
 ---@param index? number Index of old_item in parent
 ---@param parent? table Parent of old_item
 M.merge_items_rec = function(new_node, old_node, index, parent)
-    local failed = false
+  local failed = false
 
-    if not new_node or not old_node then
-        failed = true
-    else
-        for key, _ in pairs(new_node) do
-            if
-                vim.tbl_contains({
-                    "parent",
-                    "children",
-                    "folded",
-                    "hovered",
-                    "line_in_outline",
-                    "hierarchy",
-                }, key)
-            then
-                goto continue
-            end
+  if not new_node or not old_node then
+    failed = true
+  else
+    for key, _ in pairs(new_node) do
+      if
+        vim.tbl_contains({
+          "parent",
+          "children",
+          "folded",
+          "hovered",
+          "line_in_outline",
+          "hierarchy",
+        }, key)
+      then
+        goto continue
+      end
 
-            if key == "name" then
-                -- in the case of a rename, just rename the existing node
-                old_node["name"] = new_node["name"]
-            else
-                if not vim.deep_equal(new_node[key], old_node[key]) then
-                    failed = true
-                    break
-                end
-            end
-
-            ::continue::
+      if key == "name" then
+        -- in the case of a rename, just rename the existing node
+        old_node["name"] = new_node["name"]
+      else
+        if not vim.deep_equal(new_node[key], old_node[key]) then
+          failed = true
+          break
         end
+      end
+
+      ::continue::
+    end
+  end
+
+  if failed then
+    if parent and index then
+      parent[index] = new_node
+    end
+  else
+    local next_new_item = new_node.children or {}
+
+    -- in case new children are created on a node which
+    -- previously had no children
+    if #next_new_item > 0 and not old_node.children then
+      old_node.children = {}
     end
 
-    if failed then
-        if parent and index then
-            parent[index] = new_node
-        end
-    else
-        local next_new_item = new_node.children or {}
+    local next_old_item = old_node.children or {}
 
-        -- in case new children are created on a node which
-        -- previously had no children
-        if #next_new_item > 0 and not old_node.children then
-            old_node.children = {}
-        end
-
-        local next_old_item = old_node.children or {}
-
-        for i = 1, math.max(#next_new_item, #next_old_item) do
-            M.merge_items_rec(
-                next_new_item[i],
-                next_old_item[i],
-                i,
-                next_old_item
-            )
-        end
+    for i = 1, math.max(#next_new_item, #next_old_item) do
+      M.merge_items_rec(next_new_item[i], next_old_item[i], i, next_old_item)
     end
+  end
 end
 
 return M

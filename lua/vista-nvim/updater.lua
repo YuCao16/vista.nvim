@@ -9,68 +9,64 @@ local writer = require("vista-nvim.writer")
 local a = vim.api
 
 local M = {
-    first_call = {
-        lsp = true,
-        markdown = true,
-    },
+  first_call = {
+    lsp = true,
+    markdown = true,
+  },
 }
 
 function M.__refresh()
-    if not view.is_win_open({ any_tabpage = false }) then
-        return
-    end
+  if not view.is_win_open({ any_tabpage = false }) then
+    return
+  end
 
-    local bufnr = a.nvim_get_current_buf()
+  local bufnr = a.nvim_get_current_buf()
 
-    -- Track this buffer for cleanup
-    local vista = require("vista-nvim")
-    vista._setup_buffer_cleanup(bufnr)
+  -- Track this buffer for cleanup
+  local vista = require("vista-nvim")
+  vista._setup_buffer_cleanup(bufnr)
 
-    view.View.current_ft = vim.bo.filetype
-    view.View.current_filepath = vim.fn.expand("%:p")
-    if utils_provider.current_support[view.View.current_ft] == nil then
-        return
-    else
-        view.View.last_ft = vim.bo.filetype
-        view.View.last_filename = a.nvim_buf_get_name(0)
-    end
+  view.View.current_ft = vim.bo.filetype
+  view.View.current_filepath = vim.fn.expand("%:p")
+  if utils_provider.current_support[view.View.current_ft] == nil then
+    return
+  else
+    view.View.last_ft = vim.bo.filetype
+    view.View.last_filename = a.nvim_buf_get_name(0)
+  end
 
-    if config.filetype_map[view.View.current_ft] == nil then
-        view.View.provider = config.default_provider -- string
-    elseif config.filetype_map[view.View.current_ft].provider == nil then
-        view.View.provider = config.default_provider -- string
-    else
-        view.View.provider = config.filetype_map[view.View.current_ft].provider --string
-        local handler = handlers.get_handler(
-            view.View.provider,
-            { refresh = not M.first_call[view.View.provider] }
-        )
-        M.first_call[view.View.provider] = false
-        if handler ~= nil then
-            providers.request_symbols(handler, view.View.provider)
-        end
-        return
-    end
-
-    -- While setup map is not visible
-    local handler = handlers.get_handler(
-        view.View.provider,
-        { refresh = not M.first_call[view.View.provider] }
-    )
+  if config.filetype_map[view.View.current_ft] == nil then
+    view.View.provider = config.default_provider -- string
+  elseif config.filetype_map[view.View.current_ft].provider == nil then
+    view.View.provider = config.default_provider -- string
+  else
+    view.View.provider = config.filetype_map[view.View.current_ft].provider --string
+    local handler =
+      handlers.get_handler(view.View.provider, { refresh = not M.first_call[view.View.provider] })
     M.first_call[view.View.provider] = false
     if handler ~= nil then
-        providers.request_symbols(handler, view.View.provider)
+      providers.request_symbols(handler, view.View.provider)
     end
+    return
+  end
+
+  -- While setup map is not visible
+  local handler =
+    handlers.get_handler(view.View.provider, { refresh = not M.first_call[view.View.provider] })
+  M.first_call[view.View.provider] = false
+  if handler ~= nil then
+    providers.request_symbols(handler, view.View.provider)
+  end
 end
 
 function M.__refresh_title()
-    if view.get_width(vim.api.nvim_get_current_tabpage()) == config.width then
-        return
-    elseif not view.is_win_open() then
-        return
-    else
-        writer.write_title_width(view.View.bufnr)
-    end
+  if view.get_width(vim.api.nvim_get_current_tabpage()) == config.width then
+    return
+  elseif not view.is_win_open() then
+    return
+  else
+    writer.write_title_width(view.View.bufnr)
+  end
 end
 
 --TODO: check out why dealy < 300 cause nil response while first calling

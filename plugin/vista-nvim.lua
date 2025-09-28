@@ -6,7 +6,6 @@ set cpo&vim
 
 augroup VistaNvim
 au!
-" au VimEnter * lua require'vista-nvim'._vim_enter()
 au VimLeavePre * lua require'vista-nvim'.on_vim_leave()
 au WinClosed * lua require'vista-nvim'.on_win_leave()
 augroup end

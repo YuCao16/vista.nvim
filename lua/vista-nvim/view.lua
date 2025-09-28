@@ -7,50 +7,50 @@ local M = {}
 
 -- Define a table that will serve as a template for initializing or resetting M.View.
 local defaultView = {
-    bufnr = nil,
-    win_height = 10,
-    tabpages = {}, -- record tabpage with vista.nvim
-    provider = nil,
-    width = 30,
-    side = "left",
-    current_ft = nil,
-    last_ft = nil,
-    last_filename = nil,
-    current_filepath = nil,
-    lsp_bufnr = nil,
-    lsp_ft = nil,
-    title_line = 0,
-    theme = nil,
-    winopts = {
-        relativenumber = false,
-        number = false,
-        list = false,
-        winfixwidth = true,
-        winfixheight = true,
-        foldenable = false,
-        spell = false,
-        signcolumn = "no",
-        foldmethod = "manual",
-        foldcolumn = "0",
-        cursorcolumn = false,
-        colorcolumn = "0",
-    },
-    bufopts = {
-        { name = "swapfile", val = false },
-        { name = "buftype", val = "nofile" },
-        { name = "modifiable", val = false },
-        { name = "filetype", val = "VistaNvim" },
-        { name = "bufhidden", val = "hide" },
-    },
+  bufnr = nil,
+  win_height = 10,
+  tabpages = {}, -- record tabpage with vista.nvim
+  provider = nil,
+  width = 30,
+  side = "left",
+  current_ft = nil,
+  last_ft = nil,
+  last_filename = nil,
+  current_filepath = nil,
+  lsp_bufnr = nil,
+  lsp_ft = nil,
+  title_line = 0,
+  theme = nil,
+  winopts = {
+    relativenumber = false,
+    number = false,
+    list = false,
+    winfixwidth = true,
+    winfixheight = true,
+    foldenable = false,
+    spell = false,
+    signcolumn = "no",
+    foldmethod = "manual",
+    foldcolumn = "0",
+    cursorcolumn = false,
+    colorcolumn = "0",
+  },
+  bufopts = {
+    { name = "swapfile", val = false },
+    { name = "buftype", val = "nofile" },
+    { name = "modifiable", val = false },
+    { name = "filetype", val = "VistaNvim" },
+    { name = "bufhidden", val = "hide" },
+  },
 }
 
 M.View = {}
 
 -- Method to initialize or reset M.View.
 function M.View.reset(self)
-    for k, v in pairs(defaultView) do
-        self[k] = v
-    end
+  for k, v in pairs(defaultView) do
+    self[k] = v
+  end
 end
 
 -- Initialize M.View with the default values.
@@ -59,242 +59,231 @@ M.View:reset()
 ---Find a rogue VistaNvim buffer that might have been spawned by i.e. a session.
 ---@return integer|nil
 local function find_rogue_buffer()
-    for _, v in ipairs(a.nvim_list_bufs()) do
-        if string.match(vim.fn.bufname(v), "^VistaNvim_.*") then
-            return v
-        end
+  for _, v in ipairs(a.nvim_list_bufs()) do
+    if string.match(vim.fn.bufname(v), "^VistaNvim_.*") then
+      return v
     end
-    return nil
+  end
+  return nil
 end
 
 ---Check if the tree buffer is valid and loaded.
 ---@return boolean
 local function is_buf_valid()
-    if M.View.bufnr == nil then
-        return false
-    end
-    return a.nvim_buf_is_valid(M.View.bufnr)
-        and a.nvim_buf_is_loaded(M.View.bufnr)
+  if M.View.bufnr == nil then
+    return false
+  end
+  return a.nvim_buf_is_valid(M.View.bufnr) and a.nvim_buf_is_loaded(M.View.bufnr)
 end
 
 ---Find pre-existing VistaNvim buffer, delete its windows then wipe it.
 ---@private
 function M._wipe_rogue_buffer()
-    local bn = find_rogue_buffer()
-    if bn then
-        local win_ids = vim.fn.win_findbuf(bn)
-        for _, id in ipairs(win_ids) do
-            if vim.fn.win_gettype(id) ~= "autocmd" then
-                a.nvim_win_close(id, true)
-            end
-        end
-
-        a.nvim_buf_set_name(bn, "")
-        vim.schedule(function()
-            pcall(a.nvim_buf_delete, bn, {})
-        end)
+  local bn = find_rogue_buffer()
+  if bn then
+    local win_ids = vim.fn.win_findbuf(bn)
+    for _, id in ipairs(win_ids) do
+      if vim.fn.win_gettype(id) ~= "autocmd" then
+        a.nvim_win_close(id, true)
+      end
     end
+
+    a.nvim_buf_set_name(bn, "")
+    vim.schedule(function()
+      pcall(a.nvim_buf_delete, bn, {})
+    end)
+  end
 end
 
 local function generate_buffer_name()
-    return "VistaNvim_" .. math.random(1000000)
+  return "VistaNvim_" .. math.random(1000000)
 end
 
 -- set user options and create tree buffer (should never be wiped)
 function M.setup()
-    M.View.side = config.side or M.View.side
-    M.View.width = config.get_window_width() or M.View.width
-    M.View.theme = config.theme
-    -- TODO: other place to update lsp_bufnr while switch buffer
-    if #vim.lsp.get_active_clients({ bufnr = 0 }) ~= 0 then
-        M.View.lsp_bufnr = vim.fn.bufnr()
-    end
-    if config.show_title then
-        M.View.title_line = 1
-    end
+  M.View.side = config.side or M.View.side
+  M.View.width = config.get_window_width() or M.View.width
+  M.View.theme = config.theme
+  -- TODO: other place to update lsp_bufnr while switch buffer
+  if #vim.lsp.get_active_clients({ bufnr = 0 }) ~= 0 then
+    M.View.lsp_bufnr = vim.fn.bufnr()
+  end
+  if config.show_title then
+    M.View.title_line = 1
+  end
 
-    M.View.bufnr = a.nvim_create_buf(false, false)
+  M.View.bufnr = a.nvim_create_buf(false, false)
 
-    local buffer_name = generate_buffer_name()
+  local buffer_name = generate_buffer_name()
 
-    if not pcall(a.nvim_buf_set_name, M.View.bufnr, buffer_name) then
-        M._wipe_rogue_buffer()
-        a.nvim_buf_set_name(M.View.bufnr, buffer_name)
-    end
+  if not pcall(a.nvim_buf_set_name, M.View.bufnr, buffer_name) then
+    M._wipe_rogue_buffer()
+    a.nvim_buf_set_name(M.View.bufnr, buffer_name)
+  end
 
-    for _, opt in ipairs(M.View.bufopts) do
-        vim.bo[M.View.bufnr][opt.name] = opt.val
-    end
+  for _, opt in ipairs(M.View.bufopts) do
+    vim.bo[M.View.bufnr][opt.name] = opt.val
+  end
 
-    local vista_prevent_override =
-        vim.api.nvim_create_augroup("vista_prevent_override", { clear = true })
-    vim.api.nvim_create_autocmd({ "BufWinEnter", "BufWinLeave" }, {
-        pattern = { "*" },
-        callback = require("vista-nvim.view")._prevent_buffer_override,
-        group = vista_prevent_override,
-    })
+  local vista_prevent_override =
+    vim.api.nvim_create_augroup("vista_prevent_override", { clear = true })
+  vim.api.nvim_create_autocmd({ "BufWinEnter", "BufWinLeave" }, {
+    pattern = { "*" },
+    callback = require("vista-nvim.view")._prevent_buffer_override,
+    group = vista_prevent_override,
+  })
 end
 
 --- Returns the window number for vista-nvim within the tabpage specified
 ---@param tabpage number: (optional) the number of the chosen tabpage. Defaults to current tabpage.
 ---@return number
 function M.get_winnr(tabpage)
-    tabpage = tabpage or a.nvim_get_current_tabpage()
-    local tabinfo = M.View.tabpages[tabpage]
-    if tabinfo ~= nil then
-        return tabinfo.winnr
-    end
+  tabpage = tabpage or a.nvim_get_current_tabpage()
+  local tabinfo = M.View.tabpages[tabpage]
+  if tabinfo ~= nil then
+    return tabinfo.winnr
+  end
 end
 
 function M.is_buf_notify(bufnr)
-    if vim.bo[bufnr].filetype == "notify" then
-        return true
-    else
-        return false
-    end
+  if vim.bo[bufnr].filetype == "notify" then
+    return true
+  else
+    return false
+  end
 end
 
 local goto_tbl = { right = "h", left = "l", top = "j", bottom = "k" }
 
 function M._prevent_buffer_override()
-    vim.schedule(function()
-        local curwin = a.nvim_get_current_win()
-        local curbuf = a.nvim_win_get_buf(curwin)
-        if curwin ~= M.get_winnr() or curbuf == M.View.bufnr then
-            return
-        end
+  vim.schedule(function()
+    local curwin = a.nvim_get_current_win()
+    local curbuf = a.nvim_win_get_buf(curwin)
+    if curwin ~= M.get_winnr() or curbuf == M.View.bufnr then
+      return
+    end
 
-        local notify_ok, is_notify = pcall(M.is_buf_notify, bufnr)
-        if (not notify_ok) or is_notify then
-            return
-        end
-        vim.cmd("buffer " .. M.View.bufnr)
+    local notify_ok, is_notify = pcall(M.is_buf_notify, bufnr)
+    if (not notify_ok) or is_notify then
+      return
+    end
+    vim.cmd("buffer " .. M.View.bufnr)
 
-        if #vim.api.nvim_list_wins() < 2 then
-            -- TODO: check if only vista and notify window
-            vim.cmd("vsplit")
-        else
-            vim.cmd("wincmd " .. goto_tbl[M.View.side])
-        end
+    if #vim.api.nvim_list_wins() < 2 then
+      -- TODO: check if only vista and notify window
+      vim.cmd("vsplit")
+    else
+      vim.cmd("wincmd " .. goto_tbl[M.View.side])
+    end
 
-        -- copy target window options
-        local winopts_target = vim.deepcopy(M.View.winopts)
-        for key, _ in pairs(winopts_target) do
-            winopts_target[key] = a.nvim_win_get_option(0, key)
-        end
+    -- copy target window options
+    local winopts_target = vim.deepcopy(M.View.winopts)
+    for key, _ in pairs(winopts_target) do
+      winopts_target[key] = a.nvim_win_get_option(0, key)
+    end
 
-        -- change the buffer will override the target window with the vista window opts
-        vim.cmd("buffer " .. curbuf)
+    -- change the buffer will override the target window with the vista window opts
+    vim.cmd("buffer " .. curbuf)
 
-        -- revert the changes made when changing buffer
-        for key, value in pairs(winopts_target) do
-            a.nvim_win_set_option(0, key, value)
-        end
+    -- revert the changes made when changing buffer
+    for key, value in pairs(winopts_target) do
+      a.nvim_win_set_option(0, key, value)
+    end
 
-        -- TODO: Add resize, this may needed in the future
-        -- M.resize()
-    end)
+    -- TODO: Add resize, this may needed in the future
+    -- M.resize()
+  end)
 end
 
 -- @param opts table
 -- @param |- opts.any_tabpage boolean if true check if is open in any tabpage, if false check in current tab
 function M.is_win_open(opts)
-    if opts and opts.any_tabpage then
-        for _, v in pairs(M.View.tabpages) do
-            if a.nvim_win_is_valid(v.winnr) then
-                return true
-            end
-        end
-        return false
-    else
-        return M.get_winnr() ~= nil and a.nvim_win_is_valid(M.get_winnr())
+  if opts and opts.any_tabpage then
+    for _, v in pairs(M.View.tabpages) do
+      if a.nvim_win_is_valid(v.winnr) then
+        return true
+      end
     end
+    return false
+  else
+    return M.get_winnr() ~= nil and a.nvim_win_is_valid(M.get_winnr())
+  end
 end
 
 local function get_defined_width()
-    if type(M.View.width) == "number" then
-        return M.View.width
-    end
-    local width_as_number = tonumber(M.View.width:sub(0, -2))
-    local percent_as_decimal = width_as_number / 100
-    return math.floor(vim.o.columns * percent_as_decimal)
+  if type(M.View.width) == "number" then
+    return M.View.width
+  end
+  local width_as_number = tonumber(M.View.width:sub(0, -2))
+  local percent_as_decimal = width_as_number / 100
+  return math.floor(vim.o.columns * percent_as_decimal)
 end
 
 --- Returns the window width for vista-nvim within the tabpage specified
 ---@param tabpage number: (optional) the number of the chosen tabpage. Defaults to current tabpage.
 ---@return number
 function M.get_width(tabpage)
-    local winnr = M.get_winnr(tabpage)
-    return vim.fn.winwidth(winnr)
+  local winnr = M.get_winnr(tabpage)
+  return vim.fn.winwidth(winnr)
 end
 
 local move_tbl = { left = "H", right = "L", bottom = "J", top = "K" }
 
 local function set_local(opt, value)
-    a.nvim_win_set_option(0, opt, value)
+  a.nvim_win_set_option(0, opt, value)
 end
 
 function M.open(options)
-    -- TODO: enable unfocus
-    -- if #vim.lsp.get_active_clients({ bufnr = 0 }) ~= 0 then
-    --     M.View.lsp_bufnr = vim.fn.bufnr()
-    --     M.View.lsp_ft = vim.bo.filetype
-    -- end
-    options = options or { focus = false }
-    if not is_buf_valid() then
-        M.setup()
-    end
+  -- TODO: enable unfocus
+  -- if #vim.lsp.get_active_clients({ bufnr = 0 }) ~= 0 then
+  --     M.View.lsp_bufnr = vim.fn.bufnr()
+  --     M.View.lsp_ft = vim.bo.filetype
+  -- end
+  options = options or { focus = false }
+  if not is_buf_valid() then
+    M.setup()
+  end
 
-    local current_winid = a.nvim_get_current_win()
-    a.nvim_command("wincmd l")
-    a.nvim_command(
-        "noau vertical "
-            .. M.View.side
-            .. "below "
-            .. get_defined_width()
-            .. "split"
-    )
+  local current_winid = a.nvim_get_current_win()
+  a.nvim_command("wincmd l")
+  a.nvim_command("noau vertical " .. M.View.side .. "below " .. get_defined_width() .. "split")
 
-    local winnr = a.nvim_get_current_win()
-    M.View.win_height = a.nvim_win_get_height(winnr)
-    local tabpage = a.nvim_get_current_tabpage()
-    M.View.tabpages[tabpage] = vim.tbl_extend(
-        "force",
-        M.View.tabpages[tabpage] or {},
-        { winnr = winnr }
-    )
-    vim.cmd("buffer " .. M.View.bufnr)
-    for k, v in pairs(M.View.winopts) do
-        set_local(k, v)
-    end
-    if not options.focus then
-        a.nvim_set_current_win(current_winid)
-    end
+  local winnr = a.nvim_get_current_win()
+  M.View.win_height = a.nvim_win_get_height(winnr)
+  local tabpage = a.nvim_get_current_tabpage()
+  M.View.tabpages[tabpage] =
+    vim.tbl_extend("force", M.View.tabpages[tabpage] or {}, { winnr = winnr })
+  vim.cmd("buffer " .. M.View.bufnr)
+  for k, v in pairs(M.View.winopts) do
+    set_local(k, v)
+  end
+  if not options.focus then
+    a.nvim_set_current_win(current_winid)
+  end
 end
 
 function M.close()
-    if not M.is_win_open() then
-        return
-    end
-    if #a.nvim_list_wins() == 1 then
-        local modified_buffers =
-            utils_basic.get_existing_buffers({ modified = true })
+  if not M.is_win_open() then
+    return
+  end
+  if #a.nvim_list_wins() == 1 then
+    local modified_buffers = utils_basic.get_existing_buffers({ modified = true })
 
-        if #modified_buffers == 0 then
-            a.nvim_command(":silent q!")
-        else
-            utils_basic.echo_warning("cannot exit with modified buffers!")
-            a.nvim_command(":sb " .. modified_buffers[1])
-        end
+    if #modified_buffers == 0 then
+      a.nvim_command(":silent q!")
+    else
+      utils_basic.echo_warning("cannot exit with modified buffers!")
+      a.nvim_command(":sb " .. modified_buffers[1])
     end
-    a.nvim_win_hide(M.get_winnr())
+  end
+  a.nvim_win_hide(M.get_winnr())
 end
 
 function M.destroy()
-    M.close()
+  M.close()
 
-    M._wipe_rogue_buffer()
-    M.View:reset()
+  M._wipe_rogue_buffer()
+  M.View:reset()
 end
 
 return M
