@@ -8,6 +8,8 @@ local ns = api.nvim_create_namespace("vista_lite")
 local function setup_highlights()
   -- Create custom highlight group for tree structure (markers and fold icons)
   api.nvim_set_hl(0, "VistaTreeStructure", { fg = "#ABB2BF" })
+  -- Create a custom title highlight that's guaranteed to be visible
+  api.nvim_set_hl(0, "VistaTitle", { fg = "#61AFEF", bold = true })
 end
 
 -- Initialize highlights on module load
@@ -70,13 +72,19 @@ function M.apply(bufnr, metadata, config)
   -- Clear existing highlights
   api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
 
-  -- Highlight title
+  -- Highlight title with our custom highlight
   if config.show_title then
-    api.nvim_buf_set_extmark(bufnr, ns, 0, 0, {
-      end_line = 0,
-      hl_group = "Title",
-      hl_eol = true, -- Highlight to end of line
-    })
+    -- Get the first line to find its length
+    local lines = api.nvim_buf_get_lines(bufnr, 0, 1, false)
+    if #lines > 0 then
+      local line_length = #lines[1]
+      -- Use extmark with explicit end_col
+      api.nvim_buf_set_extmark(bufnr, ns, 0, 0, {
+        end_col = line_length,
+        hl_group = "VistaTitle",
+        priority = 100,  -- Ensure it's not overridden
+      })
+    end
   end
 
   -- Apply highlights based on line metadata
@@ -131,6 +139,11 @@ function M.apply(bufnr, metadata, config)
             highlight_count = highlight_count + 1
           end
         end
+      end
+
+      -- Highlight line number
+      if pos.line_num then
+        set_extmark_highlight(bufnr, ns, line_num, pos.line_num[1], pos.line_num[2], "Comment")
       end
     end
   end

@@ -4,6 +4,7 @@ local M = {}
 M.defaults = {
   -- Window configuration
   width = 30, -- Width of the vista window
+  max_expanded_width = 80, -- Maximum width when expanded with 'e' key
   position = "right", -- Position: 'left' or 'right'
   auto_close = false, -- Auto close vista when jumping to symbol
   show_title = true, -- Show title bar
@@ -15,6 +16,11 @@ M.defaults = {
     title_hl = "VistaTitle", -- Title highlight group
     max_width = 40, -- Maximum window width
     min_width = 30, -- Minimum window width
+    mode_icons = {
+      tree = "󰬚", -- Icon for tree mode
+      type = "󰬛", -- Icon for type mode
+    },
+    truncate_path = true, -- Enable smart path truncation
   },
 
   -- LSP configuration

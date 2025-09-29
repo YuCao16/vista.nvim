@@ -13,7 +13,6 @@ command! VistaFocus lua require('vista-lite').focus()
 command! VistaRefresh lua require('vista-lite').refresh()
 
 " Highlight groups
-highlight default link VistaTitle Title
 highlight default link VistaClass Type
 highlight default link VistaFunction Function
 highlight default link VistaMethod Function

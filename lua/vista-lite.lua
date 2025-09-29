@@ -22,6 +22,8 @@ local state = {
   line_metadata = {}, -- Metadata for each line for highlighting
   last_refresh = {}, -- bufnr -> changedtick last rendered
   rendered_bufnr = nil, -- the buffer whose symbols are currently rendered
+  expanded = false, -- Whether window is expanded
+  original_width = nil, -- Original width before expansion
 }
 
 -- Get configuration from Config module
@@ -404,6 +406,22 @@ local function should_filter_symbol(symbol_kind, mode)
   return false
 end
 
+-- Helper function to check if a symbol has visible children after filtering
+local function has_visible_children(symbol, mode)
+  if not symbol.children or #symbol.children == 0 then
+    return false
+  end
+
+  -- Check if at least one child is not filtered
+  for _, child in ipairs(symbol.children) do
+    if not should_filter_symbol(child.kind, mode) then
+      return true
+    end
+  end
+
+  return false
+end
+
 -- Rendering functions
 local function render_tree(symbols, lines, indent_stack, parent_folded)
   lines = lines or {}
@@ -419,7 +437,7 @@ local function render_tree(symbols, lines, indent_stack, parent_folded)
 
   for i, symbol in ipairs(filtered_symbols) do
     local is_folded = state.folded[symbol.range.start.line .. ":" .. symbol.name]
-    local has_children = symbol.children and #symbol.children > 0
+    local has_children = has_visible_children(symbol, "tree")
     local fold_icon = has_children
         and (is_folded and config.icons.fold_closed or config.icons.fold_open)
       or " "
@@ -502,11 +520,22 @@ local function render_tree(symbols, lines, indent_stack, parent_folded)
     local name_start = #table.concat(line_parts)
 
     -- Add name
-    table.insert(line_parts, symbol.name)
-    part_positions.name = { name_start, -1 }
+    local symbol_name = symbol.name
+    table.insert(line_parts, symbol_name)
+
+    -- Add line number range [start, end]
+    local start_line = symbol.range.start.line + 1
+    local end_line = symbol.range["end"].line + 1
+    local line_num_str = " [" .. start_line .. ", " .. end_line .. "]"
+    table.insert(line_parts, line_num_str)
 
     local line = table.concat(line_parts)
     table.insert(lines, line)
+
+    -- Calculate byte positions after line is built
+    local line_num_start = name_start + #symbol_name
+    part_positions.name = { name_start, line_num_start }
+    part_positions.line_num = { line_num_start, line_num_start + #line_num_str }
 
     -- Store line metadata for highlighting with correct positions
     -- Buffer is 0-based, lines array is 1-based
@@ -595,17 +624,24 @@ local function render_type(symbols)
     if not is_folded then
       for _, symbol in ipairs(syms) do
         local icon = get_icon(symbol.kind)
-        local line = "    " .. icon .. " " .. symbol.name
+        local start_line = symbol.range.start.line + 1
+        local end_line = symbol.range["end"].line + 1
+        local line_num_str = " [" .. start_line .. ", " .. end_line .. "]"
+        local line = "    " .. icon .. " " .. symbol.name .. line_num_str
         table.insert(lines, line)
 
         -- Store metadata for symbol line with byte positions
         local sym_line_num = #lines - 1 + (config.show_title and 1 or 0)
+        local name_start = 4 + #icon + 1
+        local line_num_start = name_start + #symbol.name
+        local line_num_end = line_num_start + #line_num_str
         state.line_metadata[sym_line_num] = {
           kind = symbol.kind,
           positions = {
             indent = { 0, 4 }, -- 4 ASCII spaces
             icon = { 4, 4 + #icon },
-            name = { 4 + #icon + 1, -1 },
+            name = { name_start, line_num_start },
+            line_num = { line_num_start, line_num_end },
           },
         }
 
@@ -617,22 +653,26 @@ local function render_type(symbols)
   return lines
 end
 
+
 -- Build a mapping from display line to symbol
 local function build_line_to_symbol_map()
   state.line_to_symbol = {}
 
   local function map_tree(symbols, current_line, parent_folded)
     for _, symbol in ipairs(symbols) do
-      local is_folded = state.folded[symbol.range.start.line .. ":" .. symbol.name]
+      -- Skip filtered symbols (same as in render_tree)
+      if not should_filter_symbol(symbol.kind, "tree") then
+        local is_folded = state.folded[symbol.range.start.line .. ":" .. symbol.name]
 
-      -- Map this line to the symbol
-      state.line_to_symbol[current_line] = symbol
-      symbol.display_line = current_line
-      current_line = current_line + 1
+        -- Map this line to the symbol
+        state.line_to_symbol[current_line] = symbol
+        symbol.display_line = current_line
+        current_line = current_line + 1
 
-      -- If not folded and has children, process them
-      if symbol.children and #symbol.children > 0 and not is_folded and not parent_folded then
-        current_line = map_tree(symbol.children, current_line, false)
+        -- If not folded and has visible children, process them
+        if has_visible_children(symbol, "tree") and not is_folded and not parent_folded then
+          current_line = map_tree(symbol.children, current_line, false)
+        end
       end
     end
     return current_line
@@ -677,12 +717,8 @@ render = function()
 
   -- Add title if enabled
   if config.show_title then
-    local title = config.icons.fold_open
-      .. " "
-      .. (state.file_path or "No file")
-      .. " ["
-      .. state.mode
-      .. "]"
+    local mode_icon = config.display and config.display.mode_icons and config.display.mode_icons[state.mode] or ""
+    local title = "Document Symbols " .. mode_icon
     table.insert(lines, title)
     state.title_line = 1
   else
@@ -711,6 +747,8 @@ end
 
 -- Apply highlights (delegated to Highlights module)
 apply_highlights = function()
+  -- Ensure highlights are setup (in case colorscheme changed)
+  Highlights.setup()
   Highlights.apply(state.bufnr, state.line_metadata, config)
 end
 
@@ -772,7 +810,7 @@ local function toggle_fold()
 
   if state.mode == "tree" then
     local symbol = state.line_to_symbol and state.line_to_symbol[line]
-    if symbol and symbol.children and #symbol.children > 0 then
+    if symbol and has_visible_children(symbol, "tree") then
       local key = symbol.range.start.line .. ":" .. symbol.name
       state.folded[key] = not state.folded[key]
 
@@ -844,6 +882,60 @@ local function collapse_all()
   render()
 end
 
+-- Calculate optimal width based on current buffer content
+local function calculate_optimal_width()
+  if not state.bufnr or not api.nvim_buf_is_valid(state.bufnr) then
+    return config.width
+  end
+
+  local lines = api.nvim_buf_get_lines(state.bufnr, 0, -1, false)
+  local max_width = 0
+
+  for _, line in ipairs(lines) do
+    local width = vim.fn.strdisplaywidth(line)
+    if width > max_width then
+      max_width = width
+    end
+  end
+
+  -- Add some padding
+  max_width = max_width + 2
+
+  -- Clamp to max_expanded_width
+  if max_width > config.max_expanded_width then
+    max_width = config.max_expanded_width
+  end
+
+  -- Don't go below current width
+  local current_width = get_window_width()
+  if max_width < current_width then
+    max_width = current_width
+  end
+
+  return max_width
+end
+
+-- Toggle expand/collapse window width
+local function toggle_expand()
+  if not state.winnr or not api.nvim_win_is_valid(state.winnr) then
+    return
+  end
+
+  if state.expanded then
+    -- Collapse back to original width
+    if state.original_width then
+      api.nvim_win_set_width(state.winnr, state.original_width)
+      state.expanded = false
+    end
+  else
+    -- Expand to optimal width
+    state.original_width = api.nvim_win_get_width(state.winnr)
+    local optimal_width = calculate_optimal_width()
+    api.nvim_win_set_width(state.winnr, optimal_width)
+    state.expanded = true
+  end
+end
+
 -- Keymaps
 local function setup_keymaps()
   if not state.bufnr then
@@ -863,6 +955,7 @@ local function setup_keymaps()
   vim.keymap.set("n", config.keymaps.close, M.close, opts)
   vim.keymap.set("n", config.keymaps.expand_all, expand_all, opts)
   vim.keymap.set("n", config.keymaps.collapse_all, collapse_all, opts)
+  vim.keymap.set("n", "e", toggle_expand, opts)
 end
 
 -- Public API
@@ -886,6 +979,9 @@ function M.open()
   state.source_bufnr = api.nvim_get_current_buf()
   state.source_winnr = api.nvim_get_current_win()
   state.file_path = api.nvim_buf_get_name(state.source_bufnr)
+
+  -- Ensure highlights are setup
+  Highlights.setup()
 
   -- Create buffer and window
   create_buffer()
