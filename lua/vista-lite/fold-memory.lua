@@ -4,24 +4,24 @@
 local M = {}
 
 -- Cache directory for fold states
-local cache_dir = vim.fn.stdpath('cache') .. '/vista-lite'
+local cache_dir = vim.fn.stdpath("cache") .. "/vista-lite"
 
 -- Ensure cache directory exists
 local function ensure_cache_dir()
   if vim.fn.isdirectory(cache_dir) == 0 then
-    vim.fn.mkdir(cache_dir, 'p')
+    vim.fn.mkdir(cache_dir, "p")
   end
 end
 
 -- Get cache file path for a given file
 local function get_cache_path(file_path)
-  if not file_path or file_path == '' then
+  if not file_path or file_path == "" then
     return nil
   end
 
   -- Create a safe filename from the file path
-  local safe_name = file_path:gsub('[/\\:]', '_'):gsub('%.', '_')
-  return cache_dir .. '/' .. safe_name .. '.json'
+  local safe_name = file_path:gsub("[/\\:]", "_"):gsub("%.", "_")
+  return cache_dir .. "/" .. safe_name .. ".json"
 end
 
 -- Save fold state for a file
@@ -46,7 +46,7 @@ function M.save(file_path, folded_state)
   }
 
   local json = vim.fn.json_encode(data)
-  local file = io.open(cache_path, 'w')
+  local file = io.open(cache_path, "w")
 
   if file then
     file:write(json)
@@ -65,12 +65,12 @@ function M.load(file_path)
     return {}
   end
 
-  local file = io.open(cache_path, 'r')
+  local file = io.open(cache_path, "r")
   if not file then
     return {}
   end
 
-  local content = file:read('*all')
+  local content = file:read("*all")
   file:close()
 
   local ok, data = pcall(vim.fn.json_decode, content)
@@ -91,7 +91,7 @@ end
 -- Clear all cached fold states
 function M.clear_all()
   if vim.fn.isdirectory(cache_dir) == 1 then
-    vim.fn.delete(cache_dir, 'rf')
+    vim.fn.delete(cache_dir, "rf")
   end
 end
 

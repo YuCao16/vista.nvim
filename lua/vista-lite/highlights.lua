@@ -20,43 +20,43 @@ local function set_extmark_highlight(bufnr, ns, line, start_col, end_col, hl_gro
     api.nvim_buf_set_extmark(bufnr, ns, line, start_col, {
       end_line = line,
       hl_group = hl_group,
-      hl_eol = true
+      hl_eol = true,
     })
   else
     api.nvim_buf_set_extmark(bufnr, ns, line, start_col, {
       end_col = end_col,
-      hl_group = hl_group
+      hl_group = hl_group,
     })
   end
 end
 
 -- Treesitter-aligned highlight groups for symbol kinds
 local kind_highlights = {
-  [1] = "Normal",                    -- File
-  [2] = "@module",                   -- Module
-  [3] = "@module",                   -- Namespace
-  [4] = "@module",                   -- Package
-  [5] = "@type",                     -- Class
-  [6] = "@function.method",          -- Method
-  [7] = "@property",                 -- Property
-  [8] = "@variable.member",          -- Field
-  [9] = "@constructor",              -- Constructor
-  [10] = "@lsp.type.enum",          -- Enum
-  [11] = "@lsp.type.interface",     -- Interface
-  [12] = "@function",                -- Function
-  [13] = "@variable",                -- Variable
-  [14] = "@constant",                -- Constant
-  [15] = "@string",                  -- String
-  [16] = "@number",                  -- Number
-  [17] = "@boolean",                 -- Boolean
-  [18] = "@punctuation.bracket",     -- Array
-  [19] = "@constant",                -- Object
-  [20] = "@lsp.type.keyword",       -- Key
-  [21] = "@constant.builtin",       -- Null
-  [22] = "@lsp.type.enumMember",    -- EnumMember
-  [23] = "@lsp.type.struct",        -- Struct
-  [24] = "Special",                  -- Event
-  [25] = "@operator",                -- Operator
+  [1] = "Normal", -- File
+  [2] = "@module", -- Module
+  [3] = "@module", -- Namespace
+  [4] = "@module", -- Package
+  [5] = "@type", -- Class
+  [6] = "@function.method", -- Method
+  [7] = "@property", -- Property
+  [8] = "@variable.member", -- Field
+  [9] = "@constructor", -- Constructor
+  [10] = "@lsp.type.enum", -- Enum
+  [11] = "@lsp.type.interface", -- Interface
+  [12] = "@function", -- Function
+  [13] = "@variable", -- Variable
+  [14] = "@constant", -- Constant
+  [15] = "@string", -- String
+  [16] = "@number", -- Number
+  [17] = "@boolean", -- Boolean
+  [18] = "@punctuation.bracket", -- Array
+  [19] = "@constant", -- Object
+  [20] = "@lsp.type.keyword", -- Key
+  [21] = "@constant.builtin", -- Null
+  [22] = "@lsp.type.enumMember", -- EnumMember
+  [23] = "@lsp.type.struct", -- Struct
+  [24] = "Special", -- Event
+  [25] = "@operator", -- Operator
   [26] = "@lsp.type.typeParameter", -- TypeParameter
 }
 
@@ -75,7 +75,7 @@ function M.apply(bufnr, metadata, config)
     api.nvim_buf_set_extmark(bufnr, ns, 0, 0, {
       end_line = 0,
       hl_group = "Title",
-      hl_eol = true  -- Highlight to end of line
+      hl_eol = true, -- Highlight to end of line
     })
   end
 
@@ -96,7 +96,14 @@ function M.apply(bufnr, metadata, config)
 
       -- Highlight indent guides (connector)
       if pos.connector and config.indent_guides.enable then
-        set_extmark_highlight(bufnr, ns, line_num, pos.connector[1], pos.connector[2], "VistaTreeStructure")
+        set_extmark_highlight(
+          bufnr,
+          ns,
+          line_num,
+          pos.connector[1],
+          pos.connector[2],
+          "VistaTreeStructure"
+        )
       end
 
       -- Highlight fold icons
@@ -110,14 +117,16 @@ function M.apply(bufnr, metadata, config)
 
         if pos.icon then
           -- Icon exists, color only the icon
-          local ok = pcall(set_extmark_highlight, bufnr, ns, line_num, pos.icon[1], pos.icon[2], hl_group)
+          local ok =
+            pcall(set_extmark_highlight, bufnr, ns, line_num, pos.icon[1], pos.icon[2], hl_group)
           if ok then
             highlight_count = highlight_count + 1
           end
         elseif pos.name then
           -- No icon, color the first few characters of the name to simulate an "icon"
           local name_end = pos.name[1] + 3 -- Color first 3 chars
-          local ok = pcall(set_extmark_highlight, bufnr, ns, line_num, pos.name[1], name_end, hl_group)
+          local ok =
+            pcall(set_extmark_highlight, bufnr, ns, line_num, pos.name[1], name_end, hl_group)
           if ok then
             highlight_count = highlight_count + 1
           end

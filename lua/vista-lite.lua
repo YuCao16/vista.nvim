@@ -369,18 +369,61 @@ process_symbols = function(symbols, parent_name)
   return processed
 end
 
+-- Helper function to check if a symbol should be filtered
+local function should_filter_symbol(symbol_kind, mode)
+  if not config.symbol_blacklist then
+    return false
+  end
+
+  -- Get current buffer's filetype
+  local filetype = vim.bo[state.source_bufnr or 0].filetype
+
+  -- Get the symbol kind name
+  local kind_name = symbol_kinds[symbol_kind] or "Unknown"
+
+  -- Check global blacklist
+  if config.symbol_blacklist.global then
+    local global_list = config.symbol_blacklist.global[mode] or {}
+    for _, blacklisted in ipairs(global_list) do
+      if blacklisted == kind_name then
+        return true
+      end
+    end
+  end
+
+  -- Check filetype-specific blacklist
+  if config.symbol_blacklist.filetypes and config.symbol_blacklist.filetypes[filetype] then
+    local filetype_list = config.symbol_blacklist.filetypes[filetype][mode] or {}
+    for _, blacklisted in ipairs(filetype_list) do
+      if blacklisted == kind_name then
+        return true
+      end
+    end
+  end
+
+  return false
+end
+
 -- Rendering functions
 local function render_tree(symbols, lines, indent_stack, parent_folded)
   lines = lines or {}
   indent_stack = indent_stack or {}
 
-  for i, symbol in ipairs(symbols) do
+  -- Filter symbols first to get accurate is_last determination
+  local filtered_symbols = {}
+  for _, symbol in ipairs(symbols) do
+    if not should_filter_symbol(symbol.kind, "tree") then
+      table.insert(filtered_symbols, symbol)
+    end
+  end
+
+  for i, symbol in ipairs(filtered_symbols) do
     local is_folded = state.folded[symbol.range.start.line .. ":" .. symbol.name]
     local has_children = symbol.children and #symbol.children > 0
     local fold_icon = has_children
         and (is_folded and config.icons.fold_closed or config.icons.fold_open)
       or " "
-    local is_last = (i == #symbols)
+    local is_last = (i == #filtered_symbols)
 
     local line_parts = {}
     local part_positions = {} -- Track start/end positions of each part
@@ -415,12 +458,12 @@ local function render_tree(symbols, lines, indent_stack, parent_folded)
       table.insert(line_parts, connector)
       table.insert(line_parts, " ")
 
-      part_positions.indent = { 1, #table.concat(line_parts) }  -- Start from position 1 due to leading space
+      part_positions.indent = { 1, #table.concat(line_parts) } -- Start from position 1 due to leading space
     elseif #indent_stack > 0 then
       -- No tree guides, just add spaces
       local base_indent = string.rep("  ", #indent_stack + 1)
       table.insert(line_parts, base_indent)
-      part_positions.indent = { 1, #table.concat(line_parts) }  -- Start from position 1 due to leading space
+      part_positions.indent = { 1, #table.concat(line_parts) } -- Start from position 1 due to leading space
     else
       -- No indentation for top-level items (but still has the leading space)
       part_positions.indent = { 1, 1 }
@@ -507,9 +550,12 @@ local function render_type(symbols)
   -- Categorize symbols by type
   local function categorize(syms)
     for _, symbol in ipairs(syms) do
-      local kind_name = symbol_kinds[symbol.kind] or "Unknown"
-      categorized[kind_name] = categorized[kind_name] or {}
-      table.insert(categorized[kind_name], symbol)
+      -- Check if this symbol should be filtered in type mode
+      if not should_filter_symbol(symbol.kind, "type") then
+        local kind_name = symbol_kinds[symbol.kind] or "Unknown"
+        categorized[kind_name] = categorized[kind_name] or {}
+        table.insert(categorized[kind_name], symbol)
+      end
 
       if symbol.children and #symbol.children > 0 then
         categorize(symbol.children)
@@ -519,11 +565,16 @@ local function render_type(symbols)
 
   categorize(symbols)
 
-  -- Save for line mapping
-  state.categorized_symbols = categorized
-
-  -- Render categorized symbols
+  -- Save for line mapping (only non-filtered categories)
+  state.categorized_symbols = {}
   for kind_name, syms in pairs(categorized) do
+    if #syms > 0 then
+      state.categorized_symbols[kind_name] = syms
+    end
+  end
+
+  -- Render categorized symbols (only non-empty categories)
+  for kind_name, syms in pairs(state.categorized_symbols) do
     local is_folded = state.folded["type:" .. kind_name]
     local fold_icon = is_folded and config.icons.fold_closed or config.icons.fold_open
 
