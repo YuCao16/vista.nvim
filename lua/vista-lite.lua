@@ -41,6 +41,8 @@ local config = {
     provider = 'mini', -- 'mini', 'builtin', 'none'
     fold_open = '',  -- Icon for expanded/open fold
     fold_closed = '',  -- Icon for collapsed/closed fold
+    -- fold_open = '▼',  -- Icon for expanded/open fold
+    -- fold_closed = '▶',  -- Icon for collapsed/closed fold
   },
   fold = {
     enable_memory = true,
@@ -377,40 +379,47 @@ local function render_tree(symbols, lines, indent_stack, parent_folded)
     local part_positions = {}  -- Track start/end positions of each part
 
     -- Build indentation from the stack
-    if #indent_stack > 0 then
-      if config.indent_guides.enable and config.indent_guides.style == 'tree' then
-        -- Add all indent symbols from the stack
-        for level, symbol_type in ipairs(indent_stack) do
-          if symbol_type == 'continue' then
-            table.insert(line_parts, config.indent_guides.markers.vertical .. ' ')
-          elseif symbol_type == 'space' then
+    -- Only add connectors for non-top-level items (i.e., when indent_stack is not empty)
+    if config.indent_guides.enable and config.indent_guides.style == 'tree' and #indent_stack > 0 then
+      -- Output parent continuation lines first (but skip for direct children of root)
+      if #indent_stack > 1 then
+        -- Skip the first item in the stack (which represents root level continuation)
+        for i = 2, #indent_stack do
+          local cont = indent_stack[i]
+          if cont == 'continue' then
+            table.insert(line_parts, config.indent_guides.markers.vertical)
+            table.insert(line_parts, ' ')
+          else -- 'space'
             table.insert(line_parts, '  ')
           end
         end
-        -- Add the connector for current item
-        local connector = is_last and config.indent_guides.markers.corner or config.indent_guides.markers.vertical
-        table.insert(line_parts, connector .. ' ')
-      else
-        -- No tree guides, just add spaces
-        local base_indent = string.rep('  ', #indent_stack + 1)
-        table.insert(line_parts, base_indent)
       end
+
+      -- Add the connector for current item
+      local connector = is_last and config.indent_guides.markers.corner or config.indent_guides.markers.vertical
+      table.insert(line_parts, connector)
+      table.insert(line_parts, ' ')
+
+      part_positions.indent = {0, #table.concat(line_parts)}
+    elseif #indent_stack > 0 then
+      -- No tree guides, just add spaces
+      local base_indent = string.rep('  ', #indent_stack + 1)
+      table.insert(line_parts, base_indent)
       part_positions.indent = {0, #table.concat(line_parts)}
     else
       -- No indentation for top-level items
       part_positions.indent = {0, 0}
     end
 
-    -- Add fold icon for top-level items with children
-    if #indent_stack == 0 and has_children then
+    -- Add fold icon for items with children
+    if has_children then
       local cur = #table.concat(line_parts)
       table.insert(line_parts, fold_icon .. ' ')
       part_positions.fold = {cur, cur + #fold_icon}
-    elseif #indent_stack == 0 then
-      -- Top level without children - add space for alignment
+    else
+      -- Items without children - add two spaces for alignment with fold icon
       table.insert(line_parts, '  ')
     end
-    -- For nested items, no fold icon is shown
 
     -- Add icon
     local icon = get_icon(symbol.kind)
@@ -455,16 +464,20 @@ local function render_tree(symbols, lines, indent_stack, parent_folded)
     }
 
     -- Store symbol info for navigation
-    symbol.display_line = #lines + state.title_line
+    -- Note: display_line will be calculated in a second pass after rendering
 
     if has_children and not is_folded and not parent_folded then
       -- Push the appropriate symbol onto the stack for children
       local new_stack = vim.deepcopy(indent_stack)
+
+      -- Add continuation status for the current level
+      -- This tells children whether their parent continues
       if is_last then
         table.insert(new_stack, 'space')  -- Parent ended, just add space
       else
         table.insert(new_stack, 'continue')  -- Parent continues, show vertical line
       end
+
       render_tree(symbol.children, lines, new_stack, false)
     end
   end
@@ -490,6 +503,9 @@ local function render_type(symbols)
   end
 
   categorize(symbols)
+
+  -- Save for line mapping
+  state.categorized_symbols = categorized
 
   -- Render categorized symbols
   for kind_name, syms in pairs(categorized) do
@@ -535,6 +551,52 @@ local function render_type(symbols)
   return lines
 end
 
+-- Build a mapping from display line to symbol
+local function build_line_to_symbol_map()
+  state.line_to_symbol = {}
+
+  local function map_tree(symbols, current_line, parent_folded)
+    for _, symbol in ipairs(symbols) do
+      local is_folded = state.folded[symbol.range.start.line .. ':' .. symbol.name]
+
+      -- Map this line to the symbol
+      state.line_to_symbol[current_line] = symbol
+      symbol.display_line = current_line
+      current_line = current_line + 1
+
+      -- If not folded and has children, process them
+      if symbol.children and #symbol.children > 0 and not is_folded and not parent_folded then
+        current_line = map_tree(symbol.children, current_line, false)
+      end
+    end
+    return current_line
+  end
+
+  -- Start from line after title (if present)
+  local start_line = config.show_title and 2 or 1
+
+  if state.mode == 'tree' then
+    map_tree(state.symbols, start_line, false)
+  else
+    -- For type mode, different logic needed
+    local current_line = start_line
+    for kind_name, syms in pairs(state.categorized_symbols or {}) do
+      -- Category header
+      state.line_to_symbol[current_line] = { is_category = true, kind_name = kind_name }
+      current_line = current_line + 1
+
+      local is_folded = state.folded['type:' .. kind_name]
+      if not is_folded then
+        for _, symbol in ipairs(syms) do
+          state.line_to_symbol[current_line] = symbol
+          symbol.display_line = current_line
+          current_line = current_line + 1
+        end
+      end
+    end
+  end
+end
+
 render = function()
   if not state.bufnr or not api.nvim_buf_is_valid(state.bufnr) then
     return
@@ -558,7 +620,7 @@ render = function()
 
   -- Render based on mode
   if state.mode == 'tree' then
-    local content = render_tree(state.symbols, nil, {}, false)
+    local content = render_tree(state.symbols, nil, {}, false, true)
     vim.list_extend(lines, content)
   else
     local content = render_type(state.symbols)
@@ -568,6 +630,9 @@ render = function()
   -- Set buffer content
   api.nvim_buf_set_lines(state.bufnr, 0, -1, false, lines)
   api.nvim_buf_set_option(state.bufnr, 'modifiable', false)
+
+  -- Build line-to-symbol mapping AFTER rendering
+  build_line_to_symbol_map()
 
   -- Apply highlights
   apply_highlights()
@@ -698,7 +763,7 @@ end
 
 local function jump_to_symbol(preview_only)
   local line = api.nvim_win_get_cursor(state.winnr)[1]
-  local symbol = find_symbol_at_line(line)
+  local symbol = state.line_to_symbol and state.line_to_symbol[line]
 
   if not symbol or not symbol.range then
     return
@@ -752,7 +817,8 @@ local function toggle_fold()
   local line = api.nvim_win_get_cursor(state.winnr)[1]
 
   if state.mode == 'tree' then
-    local symbol = find_symbol_at_line(line)
+    -- Use the line mapping instead of find_symbol_at_line
+    local symbol = state.line_to_symbol and state.line_to_symbol[line]
     if symbol and symbol.children and #symbol.children > 0 then
       local key = symbol.range.start.line .. ':' .. symbol.name
       state.folded[key] = not state.folded[key]
@@ -770,9 +836,10 @@ local function toggle_fold()
     local lines = api.nvim_buf_get_lines(state.bufnr, line - 1, line, false)
     if #lines > 0 then
       local line_text = lines[1]
-      -- Check if it's a category header
-      if line_text:match('^[' .. vim.pesc(config.icons.fold_open) .. vim.pesc(config.icons.fold_closed) .. '] %w+ %(') then
-        local kind_name = line_text:match('^[' .. vim.pesc(config.icons.fold_open) .. vim.pesc(config.icons.fold_closed) .. '] (%w+) %(')
+      -- Check if it's a category header by looking for the pattern
+      local pattern = '^[^%s]+ (%w+) %((%d+)%)'
+      local kind_name = line_text:match(pattern)
+      if kind_name then
         local key = 'type:' .. kind_name
         state.folded[key] = not state.folded[key]
 
