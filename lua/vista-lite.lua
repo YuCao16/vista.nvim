@@ -17,6 +17,8 @@ local state = {
   source_winnr = nil,  -- Source file window
   title_line = 1, -- 0 or 1 depending on config
   line_metadata = {}, -- Metadata for each line for highlighting
+  last_refresh = {},   -- bufnr -> changedtick last rendered
+  rendered_bufnr = nil, -- the buffer whose symbols are currently rendered
 }
 
 -- Configuration
@@ -30,14 +32,15 @@ local config = {
     enable = true,
     style = 'tree',  -- 'tree' for tree-style, 'simple' for just spaces
     markers = {
-      vertical = '┃',  -- Default to thicker line
-      corner = '┗',    -- Default to thicker corner
-      edge = '┣',      -- Thicker edge (not used currently)
-      horizontal = '━', -- Thicker horizontal (not used currently)
+      vertical = '│',  -- Thin vertical line
+      corner = '└',    -- Thin corner
+      edge = '├',      -- Thin edge (not used currently)
     },
   },
   icons = {
     provider = 'mini', -- 'mini', 'builtin', 'none'
+    fold_open = '',  -- Icon for expanded/open fold
+    fold_closed = '',  -- Icon for collapsed/closed fold
   },
   fold = {
     enable_memory = true,
@@ -57,6 +60,100 @@ local config = {
 -- Icons module reference (lazy loaded)
 local icons = nil
 local fold_memory = nil
+local autocmds_installed = false
+
+-- Forward declarations for functions referenced before definition
+local lsp_supports_document_symbols
+local request_symbols
+local process_symbols
+local render
+
+local function ensure_autocmds()
+  if autocmds_installed then return end
+  local group = api.nvim_create_augroup('VistaLiteFollow', { clear = true })
+  -- Follow on buffer enter
+  api.nvim_create_autocmd({ 'BufEnter' }, {
+    group = group,
+    callback = function(ev)
+      if not state.winnr or not api.nvim_win_is_valid(state.winnr) then return end
+      if not state.bufnr then return end
+      if ev.buf == state.bufnr then return end
+      if vim.bo[ev.buf].buftype ~= '' then return end
+      if not lsp_supports_document_symbols(ev.buf) then return end
+
+      state.source_bufnr = ev.buf
+      local curwin = api.nvim_get_current_win()
+      if curwin ~= state.winnr then
+        state.source_winnr = curwin
+      end
+      state.file_path = api.nvim_buf_get_name(ev.buf)
+      
+
+      if config.fold.enable_memory and fold_memory and state.file_path then
+        state.folded = fold_memory.load(state.file_path) or {}
+      end
+
+      -- Refresh logic: always refresh when switching to a different buffer,
+      -- otherwise only refresh if changedtick differs (content changed)
+      local tick = api.nvim_buf_get_changedtick(ev.buf)
+      if state.rendered_bufnr ~= ev.buf then
+        request_symbols(function(symbols)
+          state.symbols = process_symbols(symbols)
+          render()
+          state.rendered_bufnr = ev.buf
+          state.last_refresh[ev.buf] = tick
+        end)
+      elseif state.last_refresh[ev.buf] == tick then
+        
+      else
+        request_symbols(function(symbols)
+          state.symbols = process_symbols(symbols)
+          render()
+          state.rendered_bufnr = ev.buf
+          state.last_refresh[ev.buf] = tick
+        end)
+      end
+    end,
+  })
+
+  -- Refresh when LSP attaches
+  api.nvim_create_autocmd({ 'LspAttach' }, {
+    group = group,
+    callback = function(ev)
+      if not state.winnr or not api.nvim_win_is_valid(state.winnr) then return end
+      if not state.bufnr then return end
+      if ev.buf == state.bufnr then return end
+      if vim.bo[ev.buf].buftype ~= '' then return end
+      if not lsp_supports_document_symbols(ev.buf) then return end
+
+      state.source_bufnr = ev.buf
+      state.file_path = api.nvim_buf_get_name(ev.buf)
+      if config.fold.enable_memory and fold_memory and state.file_path then
+        state.folded = fold_memory.load(state.file_path) or {}
+      end
+      local tick = api.nvim_buf_get_changedtick(ev.buf)
+      if state.rendered_bufnr ~= ev.buf then
+        request_symbols(function(symbols)
+          state.symbols = process_symbols(symbols)
+          render()
+          state.rendered_bufnr = ev.buf
+          state.last_refresh[ev.buf] = tick
+        end)
+      elseif state.last_refresh[ev.buf] == tick then
+        
+      else
+        request_symbols(function(symbols)
+          state.symbols = process_symbols(symbols)
+          render()
+          state.rendered_bufnr = ev.buf
+          state.last_refresh[ev.buf] = tick
+        end)
+      end
+    end,
+  })
+  autocmds_installed = true
+  
+end
 
 -- Built-in LSP symbol kinds
 local symbol_kinds = {
@@ -152,16 +249,62 @@ local function create_window()
 end
 
 -- LSP integration
-local function request_symbols(callback)
+lsp_supports_document_symbols = function(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  local clients = {}
+  if vim.lsp.get_clients then
+    clients = vim.lsp.get_clients({ bufnr = bufnr, method = 'textDocument/documentSymbol' })
+  else
+    ---@diagnostic disable-next-line: deprecated
+    clients = vim.lsp.get_active_clients({ bufnr = bufnr })
+    clients = vim.tbl_filter(function(c)
+      return c.supports_method and c:supports_method('textDocument/documentSymbol')
+    end, clients)
+  end
+  return #clients > 0
+end
+
+request_symbols = function(callback)
   -- Use the source buffer, not the current (Vista) buffer
   local bufnr = state.source_bufnr or vim.api.nvim_get_current_buf()
 
+
   -- Check for active LSP clients
-  local clients = vim.lsp.get_active_clients({ bufnr = bufnr })
+  local clients
+  if vim.lsp.get_clients then
+    clients = vim.lsp.get_clients({ bufnr = bufnr, method = 'textDocument/documentSymbol' })
+  else
+    ---@diagnostic disable-next-line: deprecated
+    clients = vim.lsp.get_active_clients({ bufnr = bufnr })
+    clients = vim.tbl_filter(function(c)
+      return c.supports_method and c:supports_method('textDocument/documentSymbol')
+    end, clients)
+  end
+
   if #clients == 0 then
-    vim.notify('No LSP client attached', vim.log.levels.WARN)
     callback({})
     return
+  end
+
+  -- Use only the first LSP client to avoid duplicate requests
+  -- Priority: prefer language servers that provide better symbol info
+  local preferred_order = { 'basedpyright', 'pyright', 'rust_analyzer', 'tsserver', 'gopls' }
+  local selected_client = nil
+
+  -- First try to find a preferred client
+  for _, preferred_name in ipairs(preferred_order) do
+    for _, client in ipairs(clients) do
+      if client.name == preferred_name then
+        selected_client = client
+        break
+      end
+    end
+    if selected_client then break end
+  end
+
+  -- If no preferred client found, just use the first one
+  if not selected_client then
+    selected_client = clients[1]
   end
 
   -- Create params for documentSymbol request
@@ -169,25 +312,33 @@ local function request_symbols(callback)
     textDocument = vim.lsp.util.make_text_document_params(bufnr)
   }
 
-  vim.lsp.buf_request(bufnr, 'textDocument/documentSymbol', params, function(err, result)
+  -- Make request with only the selected client
+  selected_client.request('textDocument/documentSymbol', params, function(err, result)
     if err then
-      vim.notify('LSP Error: ' .. vim.inspect(err), vim.log.levels.ERROR)
       callback({})
       return
     end
 
     if not result or vim.tbl_isempty(result) then
-      vim.notify('No symbols found', vim.log.levels.INFO)
       callback({})
       return
     end
 
-    callback(result)
+    -- Filter out import/module symbols that some LSPs include
+    local filtered = {}
+    for _, sym in ipairs(result) do
+      -- Skip pure import statements (modules without children at the top of file)
+      if not (sym.kind == 2 and sym.range and sym.range.start.line < 30 and (not sym.children or #sym.children == 0)) then
+        table.insert(filtered, sym)
+      end
+    end
+
+    callback(filtered)
   end)
 end
 
 -- Symbol processing
-local function process_symbols(symbols, parent_name)
+process_symbols = function(symbols, parent_name)
   local processed = {}
   parent_name = parent_name or ''
 
@@ -212,47 +363,50 @@ local function process_symbols(symbols, parent_name)
 end
 
 -- Rendering functions
-local function render_tree(symbols, lines, indent, parent_folded, is_last_child)
+local function render_tree(symbols, lines, indent_stack, parent_folded)
   lines = lines or {}
-  indent = indent or 0
-  is_last_child = is_last_child or {}
+  indent_stack = indent_stack or {}
 
   for i, symbol in ipairs(symbols) do
     local is_folded = state.folded[symbol.range.start.line .. ':' .. symbol.name]
     local has_children = symbol.children and #symbol.children > 0
-    local fold_icon = has_children and (is_folded and '▸' or '▾') or ' '
+    local fold_icon = has_children and (is_folded and config.icons.fold_closed or config.icons.fold_open) or ' '
     local is_last = (i == #symbols)
 
     local line_parts = {}
     local part_positions = {}  -- Track start/end positions of each part
 
-    -- Build proper indentation
-    if indent > 0 then
-      -- Add spaces for parent indentation levels
-      local base_indent = string.rep('  ', indent - 1)
-      table.insert(line_parts, base_indent)
-      part_positions.base_indent = {0, vim.fn.strwidth(base_indent)}
-
-      -- Add tree connector if indent guides are enabled
+    -- Build indentation from the stack
+    if #indent_stack > 0 then
       if config.indent_guides.enable and config.indent_guides.style == 'tree' then
-        local connector = is_last and '└' or '│'
+        -- Add all indent symbols from the stack
+        for level, symbol_type in ipairs(indent_stack) do
+          if symbol_type == 'continue' then
+            table.insert(line_parts, config.indent_guides.markers.vertical .. ' ')
+          elseif symbol_type == 'space' then
+            table.insert(line_parts, '  ')
+          end
+        end
+        -- Add the connector for current item
+        local connector = is_last and config.indent_guides.markers.corner or config.indent_guides.markers.vertical
         table.insert(line_parts, connector .. ' ')
-        part_positions.connector = {part_positions.base_indent[2], part_positions.base_indent[2] + vim.fn.strwidth(connector)}
       else
-        table.insert(line_parts, '  ')  -- Just spaces if no guides
+        -- No tree guides, just add spaces
+        local base_indent = string.rep('  ', #indent_stack + 1)
+        table.insert(line_parts, base_indent)
       end
-
-      part_positions.indent = {0, vim.fn.strwidth(table.concat(line_parts))}
+      part_positions.indent = {0, #table.concat(line_parts)}
     else
       -- No indentation for top-level items
       part_positions.indent = {0, 0}
     end
 
     -- Add fold icon for top-level items with children
-    if indent == 0 and has_children then
+    if #indent_stack == 0 and has_children then
+      local cur = #table.concat(line_parts)
       table.insert(line_parts, fold_icon .. ' ')
-      part_positions.fold = {0, vim.fn.strwidth(fold_icon)}
-    elseif indent == 0 then
+      part_positions.fold = {cur, cur + #fold_icon}
+    elseif #indent_stack == 0 then
       -- Top level without children - add space for alignment
       table.insert(line_parts, '  ')
     end
@@ -260,38 +414,58 @@ local function render_tree(symbols, lines, indent, parent_folded, is_last_child)
 
     -- Add icon
     local icon = get_icon(symbol.kind)
-    local icon_width = vim.fn.strwidth(icon)
+    local icon_width = #icon
 
     -- Calculate position before adding icon to line_parts
-    local current_pos = vim.fn.strwidth(table.concat(line_parts))
-    table.insert(line_parts, icon .. ' ')
+    local current_pos = #table.concat(line_parts)
 
-    -- Only store icon position if icon exists and has width
-    if icon_width > 0 then
-      part_positions.icon = {current_pos, current_pos + icon_width}
+    -- Add icon and space
+    if icon and icon ~= '' then
+      table.insert(line_parts, icon .. ' ')
+      -- Store icon position if icon exists
+      if icon_width > 0 then
+        part_positions.icon = {current_pos, current_pos + icon_width}
+      end
+    else
+      -- No icon, just add spacing for alignment
+      table.insert(line_parts, '  ')
     end
+
+    -- Calculate name position after icon/spacing is added
+    local name_start = #table.concat(line_parts)
 
     -- Add name
     table.insert(line_parts, symbol.name)
-    part_positions.name = {current_pos + icon_width + 1, -1}
+    part_positions.name = {name_start, -1}
 
     local line = table.concat(line_parts)
     table.insert(lines, line)
 
     -- Store line metadata for highlighting with correct positions
-    local line_num = #lines + state.title_line - 1
-    state.line_metadata[line_num] = {
+    -- Buffer is 0-based, lines array is 1-based
+    -- We store the actual buffer line number (0-based)
+    local buffer_line = #lines - 1 + (config.show_title and 1 or 0)
+    state.line_metadata[buffer_line] = {
       kind = symbol.kind,
       has_children = has_children,
       indent = indent,
       positions = part_positions,  -- Store all part positions
+      symbol_name = symbol.name,  -- Store for debugging
+      icon_width = icon_width,     -- Store for debugging
     }
 
     -- Store symbol info for navigation
     symbol.display_line = #lines + state.title_line
 
     if has_children and not is_folded and not parent_folded then
-      render_tree(symbol.children, lines, indent + 1, false, is_last_child)
+      -- Push the appropriate symbol onto the stack for children
+      local new_stack = vim.deepcopy(indent_stack)
+      if is_last then
+        table.insert(new_stack, 'space')  -- Parent ended, just add space
+      else
+        table.insert(new_stack, 'continue')  -- Parent continues, show vertical line
+      end
+      render_tree(symbol.children, lines, new_stack, false)
     end
   end
 
@@ -320,19 +494,19 @@ local function render_type(symbols)
   -- Render categorized symbols
   for kind_name, syms in pairs(categorized) do
     local is_folded = state.folded['type:' .. kind_name]
-    local fold_icon = is_folded and '▸' or '▾'
+    local fold_icon = is_folded and config.icons.fold_closed or config.icons.fold_open
 
     local header_line = fold_icon .. ' ' .. kind_name .. ' (' .. #syms .. ')'
     table.insert(lines, header_line)
 
     -- Store metadata for category header
-    local line_num = #lines + state.title_line - 1
+    local line_num = #lines - 1 + (config.show_title and 1 or 0)
     state.line_metadata[line_num] = {
       is_category = true,
       kind_name = kind_name,
       positions = {
-        fold = {0, 1},
-        name = {2, -1},
+        fold = {0, #fold_icon},
+        name = {#fold_icon + 1, -1}, -- after the space
       }
     }
 
@@ -342,14 +516,14 @@ local function render_type(symbols)
         local line = '    ' .. icon .. ' ' .. symbol.name
         table.insert(lines, line)
 
-        -- Store metadata for symbol line with positions
-        local sym_line_num = #lines + state.title_line - 1
+        -- Store metadata for symbol line with byte positions
+        local sym_line_num = #lines - 1 + (config.show_title and 1 or 0)
         state.line_metadata[sym_line_num] = {
           kind = symbol.kind,
           positions = {
-            indent = {0, 4},  -- The 4 spaces at the start
-            icon = {4, 4 + vim.fn.strwidth(icon)},
-            name = {4 + vim.fn.strwidth(icon) + 1, -1},
+            indent = {0, 4},  -- 4 ASCII spaces
+            icon = {4, 4 + #icon},
+            name = {4 + #icon + 1, -1},
           }
         }
 
@@ -361,7 +535,7 @@ local function render_type(symbols)
   return lines
 end
 
-local function render()
+render = function()
   if not state.bufnr or not api.nvim_buf_is_valid(state.bufnr) then
     return
   end
@@ -375,7 +549,7 @@ local function render()
 
   -- Add title if enabled
   if config.show_title then
-    local title = '▾ ' .. (state.file_path or 'No file') .. ' [' .. state.mode .. ']'
+    local title = config.icons.fold_open .. ' ' .. (state.file_path or 'No file') .. ' [' .. state.mode .. ']'
     table.insert(lines, title)
     state.title_line = 1
   else
@@ -384,7 +558,7 @@ local function render()
 
   -- Render based on mode
   if state.mode == 'tree' then
-    local content = render_tree(state.symbols)
+    local content = render_tree(state.symbols, nil, {}, false)
     vim.list_extend(lines, content)
   else
     local content = render_type(state.symbols)
@@ -402,49 +576,62 @@ end
 -- Highlighting
 function apply_highlights()
   if not state.bufnr or not api.nvim_buf_is_valid(state.bufnr) then
+    vim.notify("Buffer not valid for highlights", vim.log.levels.WARN)
     return
   end
 
   local ns = api.nvim_create_namespace('vista_lite')
   api.nvim_buf_clear_namespace(state.bufnr, ns, 0, -1)
 
+  -- Debug: count metadata
+  local metadata_count = 0
+  for _ in pairs(state.line_metadata) do
+    metadata_count = metadata_count + 1
+  end
+
+  
+
   -- Highlight title
   if config.show_title then
     api.nvim_buf_add_highlight(state.bufnr, ns, 'Title', 0, 0, -1)
   end
 
-  -- Get highlight groups for different symbol kinds
+  -- Treesitter-aligned highlight groups for symbol kinds (avoid custom Vista* groups)
   local kind_highlights = {
-    [1] = 'VistaFile',           -- File
-    [2] = 'VistaModule',         -- Module
-    [3] = 'VistaNamespace',      -- Namespace
-    [4] = 'VistaPackage',        -- Package
-    [5] = 'VistaClass',          -- Class
-    [6] = 'VistaMethod',         -- Method
-    [7] = 'VistaProperty',       -- Property
-    [8] = 'VistaField',          -- Field
-    [9] = 'VistaConstructor',    -- Constructor
-    [10] = 'VistaEnum',          -- Enum
-    [11] = 'VistaInterface',     -- Interface
-    [12] = 'VistaFunction',      -- Function
-    [13] = 'VistaVariable',      -- Variable
-    [14] = 'VistaConstant',      -- Constant
-    [15] = 'VistaString',        -- String
-    [16] = 'VistaNumber',        -- Number
-    [17] = 'VistaBoolean',       -- Boolean
-    [18] = 'VistaArray',         -- Array
-    [19] = 'VistaObject',        -- Object
-    [20] = 'VistaKey',           -- Key
-    [21] = 'VistaNull',          -- Null
-    [22] = 'VistaEnumMember',    -- EnumMember
-    [23] = 'VistaStruct',        -- Struct
-    [24] = 'VistaEvent',         -- Event
-    [25] = 'VistaOperator',      -- Operator
-    [26] = 'VistaTypeParameter', -- TypeParameter
+    [1] = 'Normal',                 -- File
+    [2] = '@module',                -- Module
+    [3] = '@module',                -- Namespace
+    [4] = '@module',                -- Package
+    [5] = '@type',                  -- Class
+    [6] = '@function.method',       -- Method
+    [7] = '@property',              -- Property
+    [8] = '@variable.member',       -- Field
+    [9] = '@constructor',           -- Constructor
+    [10] = '@lsp.type.enum',        -- Enum
+    [11] = '@lsp.type.interface',   -- Interface
+    [12] = '@function',             -- Function
+    [13] = '@variable',             -- Variable
+    [14] = '@constant',             -- Constant
+    [15] = '@string',               -- String
+    [16] = '@number',               -- Number
+    [17] = '@boolean',              -- Boolean
+    [18] = '@punctuation.bracket',  -- Array
+    [19] = '@constant',             -- Object
+    [20] = '@lsp.type.keyword',     -- Key
+    [21] = '@constant.builtin',     -- Null
+    [22] = '@lsp.type.enumMember',  -- EnumMember
+    [23] = '@lsp.type.struct',      -- Struct
+    [24] = 'Special',               -- Event
+    [25] = '@operator',             -- Operator
+    [26] = '@lsp.type.typeParameter', -- TypeParameter
   }
 
   -- Apply highlights based on line metadata
+  local highlight_count = 0
   for line_num, metadata in pairs(state.line_metadata) do
+    -- Debug output disabled
+    
+
     if metadata.is_category and metadata.positions then
       -- Highlight category headers
       local pos = metadata.positions
@@ -467,26 +654,30 @@ function apply_highlights()
         api.nvim_buf_add_highlight(state.bufnr, ns, 'Comment', line_num, pos.fold[1], pos.fold[2])
       end
 
-      -- Highlight icons based on their kind, names use normal color
+      -- Highlight based on whether icon exists
       if metadata.kind then
         local hl_group = kind_highlights[metadata.kind] or 'Identifier'
 
-        -- Only color the icon
+        -- Debug individual highlights
         if pos.icon then
-          api.nvim_buf_add_highlight(state.bufnr, ns, hl_group, line_num, pos.icon[1], pos.icon[2])
+          -- Icon exists, color only the icon
+          local ok = pcall(api.nvim_buf_add_highlight, state.bufnr, ns, hl_group, line_num, pos.icon[1], pos.icon[2])
+          if ok then
+            highlight_count = highlight_count + 1
+          end
+        elseif pos.name then
+          -- No icon, color the first few characters of the name to simulate an "icon"
+          local name_end = pos.name[1] + 3  -- Color first 3 chars
+          local ok = pcall(api.nvim_buf_add_highlight, state.bufnr, ns, hl_group, line_num, pos.name[1], name_end)
+          if ok then
+            highlight_count = highlight_count + 1
+          end
         end
-
-        -- Names use Normal color (no highlight = normal color)
-        -- No need to add highlight for names
-      else
-        -- Fallback for items without kind
-        if pos.icon then
-          api.nvim_buf_add_highlight(state.bufnr, ns, 'Identifier', line_num, pos.icon[1], pos.icon[2])
-        end
-        -- Names use Normal color (no highlight)
       end
     end
   end
+
+  
 end
 
 -- Navigation functions
@@ -580,8 +771,8 @@ local function toggle_fold()
     if #lines > 0 then
       local line_text = lines[1]
       -- Check if it's a category header
-      if line_text:match('^[▸▾] %w+ %(') then
-        local kind_name = line_text:match('^[▸▾] (%w+) %(')
+      if line_text:match('^[' .. vim.pesc(config.icons.fold_open) .. vim.pesc(config.icons.fold_closed) .. '] %w+ %(') then
+        local kind_name = line_text:match('^[' .. vim.pesc(config.icons.fold_open) .. vim.pesc(config.icons.fold_closed) .. '] (%w+) %(')
         local key = 'type:' .. kind_name
         state.folded[key] = not state.folded[key]
 
@@ -657,9 +848,12 @@ function M.setup(opts)
     local ok, mod = pcall(require, 'vista-lite.fold-memory')
     if ok then fold_memory = mod end
   end
+  -- Ensure autocmds are installed even if user never calls setup
+  ensure_autocmds()
 end
 
 function M.open()
+  ensure_autocmds()
   -- Save source buffer and window info BEFORE creating vista window
   state.source_bufnr = api.nvim_get_current_buf()
   state.source_winnr = api.nvim_get_current_win()
@@ -684,6 +878,12 @@ function M.open()
   request_symbols(function(symbols)
     state.symbols = process_symbols(symbols)
     render()
+    -- Mark the initially rendered buffer and tick
+    local buf = state.source_bufnr
+    if buf and api.nvim_buf_is_valid(buf) then
+      state.rendered_bufnr = buf
+      state.last_refresh[buf] = api.nvim_buf_get_changedtick(buf)
+    end
   end)
 
   -- Focus back to original window
