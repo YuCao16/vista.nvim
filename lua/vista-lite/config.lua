@@ -75,36 +75,7 @@ M.defaults = {
   symbol_icons = {},               -- Symbol icons cache
 }
 
--- Built-in icon sets
-M.builtin_icons = {
-  -- LSP symbol kinds
-  File = '󰈔',
-  Module = '󰆧',
-  Namespace = '󰅪',
-  Package = '󰏗',
-  Class = '󰠱',
-  Method = '󰊕',
-  Property = '󰜢',
-  Field = '󰆨',
-  Constructor = '',
-  Enum = '',
-  Interface = '',
-  Function = '󰊕',
-  Variable = '󰀫',
-  Constant = '󰏿',
-  String = '󰀬',
-  Number = '󰎠',
-  Boolean = '󰨙',
-  Array = '󰅪',
-  Object = '',
-  Key = '󰌋',
-  Null = '󰟢',
-  EnumMember = '',
-  Struct = '󰠱',
-  Event = '',
-  Operator = '󰆕',
-  TypeParameter = '󰗴',
-}
+-- Icons are managed by icons.lua module
 
 -- Alternative icon sets
 M.icon_sets = {
@@ -172,18 +143,20 @@ M.mini_icons = nil
 -- Get icon for a symbol kind
 function M.get_icon(kind, provider)
   provider = provider or M.config.icons.provider
+  local icons_module = require('vista-lite.icons')
 
-  if provider == 'mini' and M.mini_icons then
-    local icon, hl = M.mini_icons.get('lsp', kind)
-    return icon or M.builtin_icons[kind] or '●'
-  elseif provider == 'builtin' then
-    return M.builtin_icons[kind] or '●'
+  if provider == 'mini' then
+    -- icons module will handle mini.icons internally
+    return icons_module.get(kind)
   elseif provider == 'minimal' then
     return M.icon_sets.minimal[kind] or '●'
   elseif provider == 'ascii' then
     return M.icon_sets.ascii[kind] or '*'
-  else
+  elseif provider == 'none' then
     return ''  -- No icon
+  else
+    -- Default to icons module which handles builtin icons
+    return icons_module.get(kind)
   end
 end
 
@@ -203,8 +176,9 @@ function M.setup(opts)
   end
 
   -- Populate symbol_icons cache based on provider
-  for kind, _ in pairs(M.builtin_icons) do
-    M.config.symbol_icons[kind] = M.get_icon(kind)
+  -- Using numeric kinds 1-26 as defined in LSP spec
+  for i = 1, 26 do
+    M.config.symbol_icons[i] = M.get_icon(i)
   end
 
   return M.config

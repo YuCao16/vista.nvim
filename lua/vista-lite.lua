@@ -4,6 +4,8 @@
 local M = {}
 local api = vim.api
 local Config = require("vista-lite.config")
+local Autocmds = require("vista-lite.autocmds")
+local Highlights = require("vista-lite.highlights")
 
 -- State management
 local state = {
@@ -28,23 +30,22 @@ local config = Config.get()
 -- Icons module reference (lazy loaded)
 local icons = nil
 local fold_memory = nil
-local autocmds_installed = false
 
 -- Forward declarations for functions referenced before definition
 local lsp_supports_document_symbols
 local request_symbols
 local process_symbols
 local render
+local apply_highlights
 
+-- Setup autocmds
 local function ensure_autocmds()
-  if autocmds_installed then
+  if Autocmds.is_installed() then
     return
   end
-  local group = api.nvim_create_augroup("VistaLiteFollow", { clear = true })
-  -- Follow on buffer enter
-  api.nvim_create_autocmd({ "BufEnter" }, {
-    group = group,
-    callback = function(ev)
+
+  Autocmds.setup({
+    on_buf_enter = function(ev)
       if not state.winnr or not api.nvim_win_is_valid(state.winnr) then
         return
       end
@@ -82,8 +83,7 @@ local function ensure_autocmds()
           state.rendered_bufnr = ev.buf
           state.last_refresh[ev.buf] = tick
         end)
-      elseif state.last_refresh[ev.buf] == tick then
-      else
+      elseif state.last_refresh[ev.buf] ~= tick then
         request_symbols(function(symbols)
           state.symbols = process_symbols(symbols)
           render()
@@ -92,12 +92,8 @@ local function ensure_autocmds()
         end)
       end
     end,
-  })
 
-  -- Refresh when LSP attaches
-  api.nvim_create_autocmd({ "LspAttach" }, {
-    group = group,
-    callback = function(ev)
+    on_lsp_attach = function(ev)
       if not state.winnr or not api.nvim_win_is_valid(state.winnr) then
         return
       end
@@ -127,8 +123,7 @@ local function ensure_autocmds()
           state.rendered_bufnr = ev.buf
           state.last_refresh[ev.buf] = tick
         end)
-      elseif state.last_refresh[ev.buf] == tick then
-      else
+      elseif state.last_refresh[ev.buf] ~= tick then
         request_symbols(function(symbols)
           state.symbols = process_symbols(symbols)
           render()
@@ -138,7 +133,6 @@ local function ensure_autocmds()
       end
     end,
   })
-  autocmds_installed = true
 end
 
 -- Built-in LSP symbol kinds
@@ -177,49 +171,18 @@ local function get_icon(kind)
     return ""
   end
 
-  if config.icons.provider == "mini" and not icons then
+  -- Always use the icons module which handles both mini.icons and builtin icons
+  if not icons then
     local ok, mod = pcall(require, "vista-lite.icons")
     if ok then
       icons = mod
+    else
+      -- If icons module fails to load, return a default
+      return "○"
     end
   end
 
-  if icons then
-    return icons.get(kind)
-  end
-
-  -- Builtin fallback
-  local builtin_icons = {
-    File = "󰈔",
-    Module = "󰆧",
-    Namespace = "󰅪",
-    Package = "󰏗",
-    Class = "󰠱",
-    Method = "󰊕",
-    Property = "󰀫",
-    Field = "󰄶",
-    Constructor = "󰒬",
-    Enum = "󰒻",
-    Interface = "󰜰",
-    Function = "󰊕",
-    Variable = "󰀫",
-    Constant = "󰏿",
-    String = "󰀬",
-    Number = "󰎠",
-    Boolean = "󰨙",
-    Array = "󰅨",
-    Object = "󰀚",
-    Key = "󰌋",
-    Null = "󰟢",
-    EnumMember = "󰒻",
-    Struct = "󰠲",
-    Event = "󱐋",
-    Operator = "󰆕",
-    TypeParameter = "󰠱",
-  }
-
-  local kind_name = symbol_kinds[kind] or "Unknown"
-  return builtin_icons[kind_name] or "○"
+  return icons.get(kind)
 end
 
 local function get_window_width()
@@ -239,11 +202,11 @@ local function create_buffer()
 
   state.bufnr = api.nvim_create_buf(false, true)
   api.nvim_buf_set_name(state.bufnr, "Vista")
-  api.nvim_buf_set_option(state.bufnr, "filetype", "vista")
-  api.nvim_buf_set_option(state.bufnr, "buftype", "nofile")
-  api.nvim_buf_set_option(state.bufnr, "bufhidden", "hide")
-  api.nvim_buf_set_option(state.bufnr, "swapfile", false)
-  api.nvim_buf_set_option(state.bufnr, "modifiable", false)
+  vim.bo[state.bufnr].filetype = "vista"
+  vim.bo[state.bufnr].buftype = "nofile"
+  vim.bo[state.bufnr].bufhidden = "hide"
+  vim.bo[state.bufnr].swapfile = false
+  vim.bo[state.bufnr].modifiable = false
 
   return state.bufnr
 end
@@ -278,7 +241,7 @@ local function create_window()
   }
 
   for opt, val in pairs(win_opts) do
-    api.nvim_win_set_option(state.winnr, opt, val)
+    vim.wo[state.winnr][opt] = val
   end
 
   return state.winnr
@@ -654,7 +617,7 @@ render = function()
     return
   end
 
-  api.nvim_buf_set_option(state.bufnr, "modifiable", true)
+  vim.bo[state.bufnr].modifiable = true
 
   -- Clear line metadata before rendering
   state.line_metadata = {}
@@ -686,7 +649,7 @@ render = function()
 
   -- Set buffer content
   api.nvim_buf_set_lines(state.bufnr, 0, -1, false, lines)
-  api.nvim_buf_set_option(state.bufnr, "modifiable", false)
+  vim.bo[state.bufnr].modifiable = false
 
   -- Build line-to-symbol mapping AFTER rendering
   build_line_to_symbol_map()
@@ -695,149 +658,12 @@ render = function()
   apply_highlights()
 end
 
--- Highlighting
-function apply_highlights()
-  if not state.bufnr or not api.nvim_buf_is_valid(state.bufnr) then
-    vim.notify("Buffer not valid for highlights", vim.log.levels.WARN)
-    return
-  end
-
-  local ns = api.nvim_create_namespace("vista_lite")
-  api.nvim_buf_clear_namespace(state.bufnr, ns, 0, -1)
-
-  -- Debug: count metadata
-  local metadata_count = 0
-  for _ in pairs(state.line_metadata) do
-    metadata_count = metadata_count + 1
-  end
-
-  -- Highlight title
-  if config.show_title then
-    api.nvim_buf_add_highlight(state.bufnr, ns, "Title", 0, 0, -1)
-  end
-
-  -- Treesitter-aligned highlight groups for symbol kinds (avoid custom Vista* groups)
-  local kind_highlights = {
-    [1] = "Normal", -- File
-    [2] = "@module", -- Module
-    [3] = "@module", -- Namespace
-    [4] = "@module", -- Package
-    [5] = "@type", -- Class
-    [6] = "@function.method", -- Method
-    [7] = "@property", -- Property
-    [8] = "@variable.member", -- Field
-    [9] = "@constructor", -- Constructor
-    [10] = "@lsp.type.enum", -- Enum
-    [11] = "@lsp.type.interface", -- Interface
-    [12] = "@function", -- Function
-    [13] = "@variable", -- Variable
-    [14] = "@constant", -- Constant
-    [15] = "@string", -- String
-    [16] = "@number", -- Number
-    [17] = "@boolean", -- Boolean
-    [18] = "@punctuation.bracket", -- Array
-    [19] = "@constant", -- Object
-    [20] = "@lsp.type.keyword", -- Key
-    [21] = "@constant.builtin", -- Null
-    [22] = "@lsp.type.enumMember", -- EnumMember
-    [23] = "@lsp.type.struct", -- Struct
-    [24] = "Special", -- Event
-    [25] = "@operator", -- Operator
-    [26] = "@lsp.type.typeParameter", -- TypeParameter
-  }
-
-  -- Apply highlights based on line metadata
-  local highlight_count = 0
-  for line_num, metadata in pairs(state.line_metadata) do
-    -- Debug output disabled
-
-    if metadata.is_category and metadata.positions then
-      -- Highlight category headers
-      local pos = metadata.positions
-      if pos.fold then
-        api.nvim_buf_add_highlight(state.bufnr, ns, "Comment", line_num, pos.fold[1], pos.fold[2])
-      end
-      if pos.name then
-        api.nvim_buf_add_highlight(state.bufnr, ns, "Type", line_num, pos.name[1], pos.name[2])
-      end
-    elseif metadata.positions then
-      local pos = metadata.positions
-
-      -- Highlight indent guides (connector)
-      if pos.connector and config.indent_guides.enable then
-        api.nvim_buf_add_highlight(
-          state.bufnr,
-          ns,
-          "Comment",
-          line_num,
-          pos.connector[1],
-          pos.connector[2]
-        )
-      end
-
-      -- Highlight fold icons
-      if metadata.has_children and pos.fold then
-        api.nvim_buf_add_highlight(state.bufnr, ns, "Comment", line_num, pos.fold[1], pos.fold[2])
-      end
-
-      -- Highlight based on whether icon exists
-      if metadata.kind then
-        local hl_group = kind_highlights[metadata.kind] or "Identifier"
-
-        -- Debug individual highlights
-        if pos.icon then
-          -- Icon exists, color only the icon
-          local ok = pcall(
-            api.nvim_buf_add_highlight,
-            state.bufnr,
-            ns,
-            hl_group,
-            line_num,
-            pos.icon[1],
-            pos.icon[2]
-          )
-          if ok then
-            highlight_count = highlight_count + 1
-          end
-        elseif pos.name then
-          -- No icon, color the first few characters of the name to simulate an "icon"
-          local name_end = pos.name[1] + 3 -- Color first 3 chars
-          local ok = pcall(
-            api.nvim_buf_add_highlight,
-            state.bufnr,
-            ns,
-            hl_group,
-            line_num,
-            pos.name[1],
-            name_end
-          )
-          if ok then
-            highlight_count = highlight_count + 1
-          end
-        end
-      end
-    end
-  end
+-- Apply highlights (delegated to Highlights module)
+apply_highlights = function()
+  Highlights.apply(state.bufnr, state.line_metadata, config)
 end
 
 -- Navigation functions
-local function find_symbol_at_line(line_num)
-  local function search(symbols)
-    for _, symbol in ipairs(symbols) do
-      if symbol.display_line == line_num then
-        return symbol
-      end
-      if symbol.children then
-        local found = search(symbol.children)
-        if found then
-          return found
-        end
-      end
-    end
-  end
-  return search(state.symbols)
-end
-
 local function jump_to_symbol(preview_only)
   local line = api.nvim_win_get_cursor(state.winnr)[1]
   local symbol = state.line_to_symbol and state.line_to_symbol[line]
@@ -894,7 +720,6 @@ local function toggle_fold()
   local line = api.nvim_win_get_cursor(state.winnr)[1]
 
   if state.mode == "tree" then
-    -- Use the line mapping instead of find_symbol_at_line
     local symbol = state.line_to_symbol and state.line_to_symbol[line]
     if symbol and symbol.children and #symbol.children > 0 then
       local key = symbol.range.start.line .. ":" .. symbol.name
