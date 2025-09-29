@@ -2,57 +2,82 @@ local M = {}
 
 -- Default configuration
 M.defaults = {
-  lsp = {
-    servers = { 'pyright', 'rust_analyzer', 'clangd', 'ts_ls', 'gopls', 'lua_ls' },
-  },
-  width = 30,
-  position = 'right',  -- 'left' or 'right'
-  auto_close = false,
-  show_title = true,
+  -- Window configuration
+  width = 30,                    -- Width of the vista window
+  position = 'right',             -- Position: 'left' or 'right'
+  auto_close = false,             -- Auto close vista when jumping to symbol
+  show_title = true,              -- Show title bar
+
+  -- Display settings
   display = {
-    mode = 'tree',  -- 'flat', 'tree', or 'type'
-    show_title = true,
-    title_format = ' Vista: %s ',
-    title_hl = 'VistaTitle',
-    max_width = 40,
-    min_width = 30,
+    mode = 'tree',                -- Display mode: 'tree' or 'type'
+    title_format = ' Vista: %s ', -- Title format (%s = filename)
+    title_hl = 'VistaTitle',       -- Title highlight group
+    max_width = 40,                -- Maximum window width
+    min_width = 30,                -- Minimum window width
   },
-  indent_guides = {
-    enable = true,
-    style = 'tree',  -- 'simple', 'tree'
-    markers = {
-      vertical = '│',  -- Thin vertical line
-      corner = '└',    -- Thin corner
+
+  -- LSP configuration
+  lsp = {
+    servers = {                    -- LSP servers to try in order
+      'pyright',
+      'rust_analyzer',
+      'clangd',
+      'ts_ls',
+      'gopls',
+      'lua_ls',
     },
   },
+
+  -- Tree indentation guides
+  indent_guides = {
+    enable = true,                 -- Enable indent guides
+    style = 'tree',                -- Style: 'tree' or 'simple'
+    markers = {
+      vertical = '│',              -- Vertical line for continuing items
+      corner = '└',                -- Corner for last item
+      edge = '├',                  -- Edge connector (not currently used)
+    },
+  },
+
+  -- Icons configuration
   icons = {
-    provider = 'mini', -- 'mini', 'builtin', 'none'
-    fold_open = '',  -- Icon for expanded/open fold '▼'
-    fold_closed = '',  -- Icon for collapsed/closed fold '▶'
+    provider = 'mini',             -- Icon provider: 'mini', 'builtin', or 'none'
+    -- Fold icons - you can customize these
+    fold_open = '',               -- Icon for expanded items
+    fold_closed = '',             -- Icon for collapsed items
+
   },
+
+  -- Fold state management
   fold = {
-    enable_memory = true,
-    save_on_close = true,
+    enable_memory = true,          -- Remember fold states
+    save_on_close = true,          -- Save fold states when closing
   },
+
+  -- Key mappings
   keymaps = {
-    jump = '<CR>',
-    preview = 'p',
-    toggle_fold = 'o',
-    close = 'q',
-    refresh = 'R',
-    switch_mode = 's',
-    toggle_kind = 't',
-    jump_split = 's',
-    jump_vsplit = 'v',
-    jump_tab = 't',
-    expand_all = 'zR',
-    collapse_all = 'zr',
+    jump = '<CR>',                 -- Jump to symbol
+    preview = 'p',                 -- Preview symbol location
+    toggle_fold = 'o',             -- Toggle fold
+    close = 'q',                   -- Close vista window
+    refresh = 'R',                 -- Refresh symbols
+    switch_mode = 's',             -- Switch between tree/type mode
+    toggle_kind = 't',             -- Toggle kind visibility
+    jump_split = 's',              -- Jump to symbol in split
+    jump_vsplit = 'v',             -- Jump to symbol in vsplit
+    jump_tab = 't',                -- Jump to symbol in new tab
+    expand_all = 'zR',             -- Expand all folds
+    collapse_all = 'zr',           -- Collapse all folds
   },
-  symbol_icons = {},  -- Will be populated by setup
+
+  -- Internal - populated during setup
+  symbol_icons = {},               -- Symbol icons cache
 }
 
--- Builtin icons
+-- Built-in icon sets
 M.builtin_icons = {
+  -- LSP symbol kinds
   File = '󰈔',
   Module = '󰆧',
   Namespace = '󰅪',
@@ -81,6 +106,66 @@ M.builtin_icons = {
   TypeParameter = '󰗴',
 }
 
+-- Alternative icon sets
+M.icon_sets = {
+  minimal = {
+    File = '◯',
+    Module = '◉',
+    Namespace = '◎',
+    Package = '◈',
+    Class = '○',
+    Method = '●',
+    Property = '◆',
+    Field = '◇',
+    Constructor = '◐',
+    Enum = '◑',
+    Interface = '◒',
+    Function = '●',
+    Variable = '◓',
+    Constant = '◔',
+    String = '◕',
+    Number = '◖',
+    Boolean = '◗',
+    Array = '◘',
+    Object = '◙',
+    Key = '◚',
+    Null = '◛',
+    EnumMember = '◜',
+    Struct = '◝',
+    Event = '◞',
+    Operator = '◟',
+    TypeParameter = '◠',
+  },
+  ascii = {
+    File = 'F',
+    Module = 'M',
+    Namespace = 'N',
+    Package = 'P',
+    Class = 'C',
+    Method = 'm',
+    Property = 'p',
+    Field = 'f',
+    Constructor = 'c',
+    Enum = 'E',
+    Interface = 'I',
+    Function = 'ƒ',
+    Variable = 'v',
+    Constant = 'const',
+    String = 's',
+    Number = 'n',
+    Boolean = 'b',
+    Array = 'a',
+    Object = 'o',
+    Key = 'k',
+    Null = 'null',
+    EnumMember = 'e',
+    Struct = 'S',
+    Event = 'ev',
+    Operator = 'op',
+    TypeParameter = 'T',
+  },
+}
+
 -- Mini.icons provider (will be loaded dynamically if available)
 M.mini_icons = nil
 
@@ -93,6 +178,10 @@ function M.get_icon(kind, provider)
     return icon or M.builtin_icons[kind] or '●'
   elseif provider == 'builtin' then
     return M.builtin_icons[kind] or '●'
+  elseif provider == 'minimal' then
+    return M.icon_sets.minimal[kind] or '●'
+  elseif provider == 'ascii' then
+    return M.icon_sets.ascii[kind] or '*'
   else
     return ''  -- No icon
   end
@@ -102,7 +191,7 @@ end
 function M.setup(opts)
   M.config = vim.tbl_deep_extend('force', M.defaults, opts or {})
 
-  -- Try to load mini.icons if available and configured
+  -- Try to load mini.icons if configured
   if M.config.icons.provider == 'mini' then
     local ok, mini_icons = pcall(require, 'mini.icons')
     if ok then
@@ -113,7 +202,7 @@ function M.setup(opts)
     end
   end
 
-  -- Populate symbol_icons based on provider
+  -- Populate symbol_icons cache based on provider
   for kind, _ in pairs(M.builtin_icons) do
     M.config.symbol_icons[kind] = M.get_icon(kind)
   end
@@ -127,6 +216,26 @@ function M.get()
     M.setup({})  -- Initialize with defaults if not setup yet
   end
   return M.config
+end
+
+-- Update a specific config value
+function M.set(key, value)
+  if not M.config then
+    M.setup({})
+  end
+
+  -- Handle nested keys like 'icons.provider'
+  local keys = vim.split(key, '.', { plain = true })
+  local config = M.config
+
+  for i = 1, #keys - 1 do
+    config = config[keys[i]]
+    if not config then
+      error('Invalid config key: ' .. key)
+    end
+  end
+
+  config[keys[#keys]] = value
 end
 
 return M

@@ -22,9 +22,8 @@ local state = {
   rendered_bufnr = nil, -- the buffer whose symbols are currently rendered
 }
 
--- Configuration
--- Get configuration (will be initialized in setup)
-local config = Config.get() -- Get default config initially
+-- Get configuration from Config module
+local config = Config.get()
 
 -- Icons module reference (lazy loaded)
 local icons = nil
@@ -174,8 +173,53 @@ local symbol_kinds = {
 
 -- Utility functions
 local function get_icon(kind)
+  if config.icons.provider == "none" then
+    return ""
+  end
+
+  if config.icons.provider == "mini" and not icons then
+    local ok, mod = pcall(require, "vista-lite.icons")
+    if ok then
+      icons = mod
+    end
+  end
+
+  if icons then
+    return icons.get(kind)
+  end
+
+  -- Builtin fallback
+  local builtin_icons = {
+    File = "󰈔",
+    Module = "󰆧",
+    Namespace = "󰅪",
+    Package = "󰏗",
+    Class = "󰠱",
+    Method = "󰊕",
+    Property = "󰀫",
+    Field = "󰄶",
+    Constructor = "󰒬",
+    Enum = "󰒻",
+    Interface = "󰜰",
+    Function = "󰊕",
+    Variable = "󰀫",
+    Constant = "󰏿",
+    String = "󰀬",
+    Number = "󰎠",
+    Boolean = "󰨙",
+    Array = "󰅨",
+    Object = "󰀚",
+    Key = "󰌋",
+    Null = "󰟢",
+    EnumMember = "󰒻",
+    Struct = "󰠲",
+    Event = "󱐋",
+    Operator = "󰆕",
+    TypeParameter = "󰠱",
+  }
+
   local kind_name = symbol_kinds[kind] or "Unknown"
-  return Config.get_icon(kind_name)
+  return builtin_icons[kind_name] or "○"
 end
 
 local function get_window_width()
@@ -378,6 +422,9 @@ local function render_tree(symbols, lines, indent_stack, parent_folded)
     local line_parts = {}
     local part_positions = {} -- Track start/end positions of each part
 
+    -- Add a leading space for all lines to shift everything right
+    table.insert(line_parts, " ")
+
     -- Build indentation from the stack
     -- Only add connectors for non-top-level items (i.e., when indent_stack is not empty)
     if
@@ -385,9 +432,6 @@ local function render_tree(symbols, lines, indent_stack, parent_folded)
       and config.indent_guides.style == "tree"
       and #indent_stack > 0
     then
-      -- Add a leading space to shift all connectors right by 1
-      table.insert(line_parts, " ")
-
       -- Output parent continuation lines first (but skip for direct children of root)
       if #indent_stack > 1 then
         -- Skip the first item in the stack (which represents root level continuation)
@@ -402,20 +446,21 @@ local function render_tree(symbols, lines, indent_stack, parent_folded)
         end
       end
 
-      -- Add the connector for current item (without trailing space)
+      -- Add the connector for current item
       local connector = is_last and config.indent_guides.markers.corner
         or config.indent_guides.markers.vertical
       table.insert(line_parts, connector)
+      table.insert(line_parts, " ")
 
-      part_positions.indent = { 0, #table.concat(line_parts) }
+      part_positions.indent = { 1, #table.concat(line_parts) }  -- Start from position 1 due to leading space
     elseif #indent_stack > 0 then
       -- No tree guides, just add spaces
       local base_indent = string.rep("  ", #indent_stack + 1)
       table.insert(line_parts, base_indent)
-      part_positions.indent = { 0, #table.concat(line_parts) }
+      part_positions.indent = { 1, #table.concat(line_parts) }  -- Start from position 1 due to leading space
     else
-      -- No indentation for top-level items
-      part_positions.indent = { 0, 0 }
+      -- No indentation for top-level items (but still has the leading space)
+      part_positions.indent = { 1, 1 }
     end
 
     -- Add fold icon for items with children
@@ -946,8 +991,7 @@ end
 
 -- Public API
 function M.setup(opts)
-  -- Initialize config from Config module
-  config = Config.setup(opts)
+  config = vim.tbl_deep_extend("force", config, opts or {})
 
   -- Load fold memory if enabled
   if config.fold.enable_memory then
