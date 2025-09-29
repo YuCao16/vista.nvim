@@ -3,7 +3,7 @@ local M = {}
 -- Default configuration
 M.defaults = {
   -- Window configuration
-  width = 30, -- Width of the vista window
+  width = 32, -- Width of the vista window
   max_expanded_width = 80, -- Maximum width when expanded with 'e' key
   position = "right", -- Position: 'left' or 'right'
   auto_close = false, -- Auto close vista when jumping to symbol
@@ -17,22 +17,27 @@ M.defaults = {
     max_width = 40, -- Maximum window width
     min_width = 30, -- Minimum window width
     mode_icons = {
-      tree = "󰬚", -- Icon for tree mode
-      type = "󰬛", -- Icon for type mode
+      tree = "󱏒 ", -- Icon for tree mode
+      type = " ", -- Icon for type mode
     },
     truncate_path = true, -- Enable smart path truncation
   },
 
   -- LSP configuration
   lsp = {
-    servers = { -- LSP servers to try in order
-      "pyright",
-      "rust_analyzer",
-      "clangd",
-      "ts_ls",
-      "gopls",
-      "lua_ls",
+    -- Filetype-specific server preferences
+    filetype_servers = {
+      python = { "ruff" },
+      rust = { "rust_analyzer" },
+      c = { "clangd" },
+      cpp = { "clangd" },
+      javascript = { "ts_ls", "tsserver" },
+      typescript = { "ts_ls", "tsserver" },
+      go = { "gopls" },
+      lua = { "lua_ls" },
     },
+    -- Default servers to try if no filetype match
+    default_servers = { "basedpyright", "pyright", "rust_analyzer", "ts_ls", "tsserver", "gopls", "clangd", "lua_ls" },
   },
 
   -- Tree indentation guides

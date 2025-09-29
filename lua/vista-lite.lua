@@ -6,6 +6,7 @@ local api = vim.api
 local Config = require("vista-lite.config")
 local Autocmds = require("vista-lite.autocmds")
 local Highlights = require("vista-lite.highlights")
+local Utils = require("vista-lite.utils")
 
 -- State management
 local state = {
@@ -287,9 +288,14 @@ request_symbols = function(callback)
   end
 
   -- Use only the first LSP client to avoid duplicate requests
-  -- Priority: prefer language servers that provide better symbol info
-  local preferred_order = { "basedpyright", "pyright", "rust_analyzer", "tsserver", "gopls" }
+  -- Priority: prefer language servers based on filetype configuration
   local selected_client = nil
+
+  -- Get current buffer's filetype
+  local filetype = vim.bo[bufnr].filetype
+
+  -- Get preferred server list for this filetype, or use default
+  local preferred_order = config.lsp.filetype_servers[filetype] or config.lsp.default_servers or {}
 
   -- First try to find a preferred client
   for _, preferred_name in ipairs(preferred_order) do
@@ -474,7 +480,10 @@ local function render_tree(symbols, lines, indent_stack, parent_folded)
       local connector = is_last and config.indent_guides.markers.corner
         or config.indent_guides.markers.vertical
       table.insert(line_parts, connector)
-      table.insert(line_parts, " ")
+      -- Only add a space for the first level of indentation
+      if #indent_stack < 2 then
+        table.insert(line_parts, " ")
+      end
 
       part_positions.indent = { 1, #table.concat(line_parts) } -- Start from position 1 due to leading space
     elseif #indent_stack > 0 then
@@ -787,13 +796,18 @@ local function jump_to_symbol(preview_only)
   end
 
   -- Jump to position
+  local target_line = symbol.range.start.line + 1
   api.nvim_win_set_cursor(target_win, {
-    symbol.range.start.line + 1,
+    target_line,
     symbol.range.start.character,
   })
 
   -- Center the view
   vim.cmd("normal! zz")
+
+  -- Flash highlight the target line
+  local target_bufnr = api.nvim_win_get_buf(target_win)
+  Utils.flash_highlight(target_bufnr, target_line, 300)
 
   if not preview_only then
     api.nvim_set_current_win(target_win)

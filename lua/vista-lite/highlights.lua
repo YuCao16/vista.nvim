@@ -10,6 +10,8 @@ local function setup_highlights()
   api.nvim_set_hl(0, "VistaTreeStructure", { fg = "#ABB2BF" })
   -- Create a custom title highlight that's guaranteed to be visible
   api.nvim_set_hl(0, "VistaTitle", { fg = "#61AFEF", bold = true })
+  -- Link flash highlight to Search for better visibility
+  api.nvim_set_hl(0, "VistaFlashLine", { link = "Search" })
 end
 
 -- Initialize highlights on module load
@@ -46,7 +48,7 @@ local kind_highlights = {
   [10] = "@lsp.type.enum", -- Enum
   [11] = "@lsp.type.interface", -- Interface
   [12] = "@function", -- Function
-  [13] = "@variable", -- Variable
+  [13] = "@variable.parameter", -- Variable
   [14] = "@constant", -- Constant
   [15] = "@string", -- String
   [16] = "@number", -- Number
